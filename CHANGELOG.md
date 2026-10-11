@@ -44,6 +44,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   (`Paragraph.line_count`).
 - `Gauge`: a progress bar filled in steps of an eighth of a cell, with a label
   that stays readable over the filled part.
+- `Line_gauge`: a progress bar drawn as a thin line with a label before it;
+  the part that is done is thick and the rest is thin, so the bar reads even
+  without colors.
 - `Tabs`: a row of titles with the selected one highlighted and a divider
   between them. `Line.patch_style` layers a style under the spans of a line.
 - `Item_list` and `Selection`: a list of rows with a selected one, a
