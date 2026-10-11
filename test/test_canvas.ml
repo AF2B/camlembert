@@ -368,16 +368,7 @@ let test_invalid_bounds_are_rejected () =
 let max_cells = 12
 let max_coordinate = 10.0
 let canvas_bounds = lowest_coordinate, max_coordinate
-let markers = [ Marker.Braille; Marker.Half_block; Marker.Block; Marker.Dot ]
 let coordinate = QCheck2.Gen.float_range lowest_coordinate max_coordinate
-let marker = QCheck2.Gen.oneof_list markers
-
-let print_marker = function
-  | Marker.Braille -> "Braille"
-  | Marker.Half_block -> "Half_block"
-  | Marker.Block -> "Block"
-  | Marker.Dot -> "Dot"
-;;
 
 let painted_cells buffer =
   Buffer.to_lines buffer
@@ -391,12 +382,13 @@ let painted_cells buffer =
 let property_a_point_inside_the_bounds_is_always_drawn =
   QCheck2.Test.make
     ~name:"a point inside the bounds is always drawn"
-    ~print:QCheck2.Print.(quad float float print_marker (pair int int))
+    ~print:
+      QCheck2.Print.(quad float float Generators.print_marker (pair int int))
     QCheck2.Gen.(
       quad
         coordinate
         coordinate
-        marker
+        Generators.marker
         (pair (int_range Int.one max_cells) (int_range Int.one max_cells)))
     (fun (x, y, marker, (width, height)) ->
        let canvas =

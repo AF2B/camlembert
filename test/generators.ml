@@ -6,6 +6,7 @@ module Color = Camlembert.Color
 module Constraint = Camlembert.Constraint
 module Layout = Camlembert.Layout
 module Line = Camlembert.Line
+module Marker = Camlembert.Marker
 module Rect = Camlembert.Rect
 module Style = Camlembert.Style
 
@@ -267,3 +268,12 @@ let ratio = QCheck2.Gen.float_range 0.0 1.0
 let print_rect = Format.asprintf "%a" Rect.pp
 let print_margins = QCheck2.Print.(quad int int int int)
 let print_style = Format.asprintf "%a" Style.pp
+let markers = [ Marker.Braille; Marker.Half_block; Marker.Block; Marker.Dot ]
+let marker = QCheck2.Gen.oneof_list markers
+
+let print_marker = function
+  | Marker.Braille -> "Braille"
+  | Marker.Half_block -> "Half_block"
+  | Marker.Block -> "Block"
+  | Marker.Dot -> "Dot"
+;;

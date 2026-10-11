@@ -30,5 +30,6 @@
   test_eighths
   test_bar_chart
   test_marker
-  test_canvas)
+  test_canvas
+  test_chart)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
