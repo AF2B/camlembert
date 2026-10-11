@@ -8,6 +8,7 @@ let held_alt = { Event.no_modifiers with alt = true }
 let held_shift = { Event.no_modifiers with shift = true }
 let key ?modifiers key_value = Event.key_press ?modifiers key_value
 let char ?modifiers text = key ?modifiers (Event.Char text)
+let paste text = escape ^ "[200~" ^ text ^ escape ^ "[201~"
 
 (* Every encoding below is complete on its own and cannot be mistaken for the
    start of another one. Each is paired with the event it stands for. *)
@@ -68,6 +69,10 @@ let encodings =
   ; escape ^ "[23~", key (Event.Function 11)
   ; escape ^ "[24~", key (Event.Function 12)
   ; escape ^ "[15;5~", key ~modifiers:held_control (Event.Function 5)
+  ; paste "hello", Event.Paste "hello"
+  ; paste "", Event.Paste ""
+  ; ( paste ("one\ntwo " ^ escape ^ "[A is not a key")
+    , Event.Paste ("one\ntwo " ^ escape ^ "[A is not a key") )
   ]
 ;;
 
@@ -153,6 +158,49 @@ let test_character_split_across_reads () =
     "e acute"
     [ char "\u{E9}" ]
     second_events
+;;
+
+let test_a_paste_arriving_in_pieces_is_delivered_once_it_is_complete () =
+  let parser, first_events =
+    Input_parser.feed Input_parser.empty (escape ^ "[200~par")
+  in
+  Alcotest.(check (list event_testable)) "nothing yet" [] first_events;
+  let parser, second_events = Input_parser.feed parser "tial" in
+  Alcotest.(check (list event_testable)) "still nothing" [] second_events;
+  let parser, third_events =
+    Input_parser.feed parser (" text" ^ escape ^ "[201~")
+  in
+  Alcotest.(check (list event_testable))
+    "the whole paste"
+    [ Event.Paste "partial text" ]
+    third_events;
+  Alcotest.(check bool)
+    "nothing pending"
+    false
+    (Input_parser.has_pending parser)
+;;
+
+let test_a_pause_in_the_middle_of_a_paste_is_not_a_lone_escape () =
+  let parser, _ = Input_parser.feed Input_parser.empty (escape ^ "[200~par") in
+  Alcotest.(check bool)
+    "no timeout needed"
+    false
+    (Input_parser.has_pending parser);
+  let _, finished = Input_parser.feed parser (escape ^ "[201~") in
+  Alcotest.(check (list event_testable)) "paste" [ Event.Paste "par" ] finished
+;;
+
+let test_keys_around_a_paste_are_not_mixed_with_it () =
+  Alcotest.(check (list event_testable))
+    "key, paste, key"
+    [ char "a"; Event.Paste "b c"; char "d" ]
+    (events_of ("a" ^ paste "b c" ^ "d"))
+;;
+
+let test_an_unfinished_start_marker_is_a_normal_pending_sequence () =
+  let parser, events = Input_parser.feed Input_parser.empty (escape ^ "[20") in
+  Alcotest.(check (list event_testable)) "nothing yet" [] events;
+  Alcotest.(check bool) "pending" true (Input_parser.has_pending parser)
 ;;
 
 let test_unknown_sequences_are_ignored () =
@@ -285,6 +333,22 @@ let () =
             "split character"
             `Quick
             test_character_split_across_reads
+        ; Alcotest.test_case
+            "paste in pieces"
+            `Quick
+            test_a_paste_arriving_in_pieces_is_delivered_once_it_is_complete
+        ; Alcotest.test_case
+            "pause inside a paste"
+            `Quick
+            test_a_pause_in_the_middle_of_a_paste_is_not_a_lone_escape
+        ; Alcotest.test_case
+            "keys around a paste"
+            `Quick
+            test_keys_around_a_paste_are_not_mixed_with_it
+        ; Alcotest.test_case
+            "unfinished start marker"
+            `Quick
+            test_an_unfinished_start_marker_is_a_normal_pending_sequence
         ] )
     ; ( "noise"
       , [ Alcotest.test_case
