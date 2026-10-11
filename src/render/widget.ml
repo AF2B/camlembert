@@ -1,7 +1,8 @@
-(** Something that can draw itself.
-
-    A widget receives the region it may draw in and the buffer to draw into.
-    Widgets are plain functions, so they compose with ordinary higher-order
-    functions. *)
-
 type t = Rect.t -> Buffer.t -> unit
+
+let split ~direction parts area buffer =
+  let regions =
+    Layout.split ~direction ~constraints:(List.map fst parts) area
+  in
+  List.iter2 (fun (_, widget) region -> widget region buffer) parts regions
+;;
