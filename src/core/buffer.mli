@@ -65,6 +65,12 @@ val set_string
     @param style The style layered over the existing ones. *)
 val set_style : t -> Rect.t -> Style.t -> unit
 
+(** Turns the cells of a region into blank cells with the default style.
+
+    @param buffer The buffer to change.
+    @param region The cells to blank; the part outside the buffer is ignored. *)
+val clear : t -> Rect.t -> unit
+
 (** Turns every cell back into a blank cell.
 
     @param buffer The buffer to clear. *)
