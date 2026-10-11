@@ -18,3 +18,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   terminal columns it takes, so CJK, emoji and combining marks line up.
 - `Cell` and `Buffer`: the grid widgets draw into, with `Buffer.diff` to find
   the cells that changed between two frames, wide characters included.
+- `Terminal`, `Frame` and `Widget`: draw a frame by rendering widgets into it;
+  only the cells that changed since the previous frame reach the backend, and
+  a resized screen is redrawn from scratch.
+- `Backend`: the record of four functions that connects the library to a
+  terminal, and `Test_backend`, an in-memory terminal to test widgets without
+  a real one.
