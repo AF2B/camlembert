@@ -1,5 +1,6 @@
 (library
  (name camlembert)
- (public_name camlembert))
+ (public_name camlembert)
+ (libraries uucp uuseg))
 
 (include_subdirs unqualified)
