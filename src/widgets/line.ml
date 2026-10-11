@@ -36,3 +36,10 @@ let render_aligned line buffer ~alignment ~column ~row ~width =
   in
   render line buffer ~column:(column + offset) ~row ~max_width:(width - offset)
 ;;
+
+let patch_style line style =
+  let restyle (span : Span.t) =
+    { span with Span.style = Style.patch style span.style }
+  in
+  { line with spans = List.map restyle line.spans }
+;;

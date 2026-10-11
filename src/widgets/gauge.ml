@@ -48,13 +48,10 @@ let percentage_label gauge =
   Line.of_string (Printf.sprintf "%d%%" percent)
 ;;
 
-(* The label with its own styles layered over the label style. *)
 let styled_label gauge =
-  let label = Option.value gauge.label ~default:(percentage_label gauge) in
-  let restyle (span : Span.t) =
-    { span with Span.style = Style.patch gauge.label_style span.style }
-  in
-  { label with Line.spans = List.map restyle label.Line.spans }
+  Line.patch_style
+    (Option.value gauge.label ~default:(percentage_label gauge))
+    gauge.label_style
 ;;
 
 let draw_bar gauge buffer inner =
