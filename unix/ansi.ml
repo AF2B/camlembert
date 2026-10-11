@@ -18,6 +18,7 @@ let reset_mode_final = "l"
 let erase_entire_display = 2
 let alternate_screen_mode = 1049
 let cursor_visibility_mode = 25
+let bracketed_paste_mode = 2004
 
 (* Select Graphic Rendition parameters, from ECMA-48 and xterm. *)
 let reset_code = 0
@@ -57,6 +58,14 @@ let leave_alternate_screen =
 
 let show_cursor = private_mode ~mode:cursor_visibility_mode set_mode_final
 let hide_cursor = private_mode ~mode:cursor_visibility_mode reset_mode_final
+
+let enable_bracketed_paste =
+  private_mode ~mode:bracketed_paste_mode set_mode_final
+;;
+
+let disable_bracketed_paste =
+  private_mode ~mode:bracketed_paste_mode reset_mode_final
+;;
 
 let clear_screen =
   sequence ~parameters:[ erase_entire_display ] erase_display_final

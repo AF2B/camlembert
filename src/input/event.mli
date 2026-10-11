@@ -35,6 +35,9 @@ type t =
       { width : int
       ; height : int
       } (** The terminal window got a new size, in cells. *)
+  | Paste of string
+  (** Text was pasted. It only arrives when the terminal was asked to mark
+          pastes, and then it comes whole instead of as key presses. *)
 
 (** No modifier key held. *)
 val no_modifiers : modifiers

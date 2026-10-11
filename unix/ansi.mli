@@ -15,6 +15,13 @@ val hide_cursor : string
 (** Shows the text cursor. *)
 val show_cursor : string
 
+(** Asks the terminal to mark pasted text, so it arrives as a single paste
+    instead of as key presses. *)
+val enable_bracketed_paste : string
+
+(** Goes back to receiving pasted text as key presses. *)
+val disable_bracketed_paste : string
+
 (** Blanks the screen and moves the cursor to the top-left corner. *)
 val clear_screen : string
 

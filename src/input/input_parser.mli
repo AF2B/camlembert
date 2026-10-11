@@ -8,8 +8,8 @@
 
     Understood: printable and UTF-8 characters, Enter, Tab, Backspace, Control
     and Alt combinations, cursor and editing keys with their modifiers,
-    function keys F1 to F12, and Shift+Tab. Anything else, such as mouse
-    reports, is ignored. *)
+    function keys F1 to F12, Shift+Tab, and pasted text between the sequences
+    that mark it. Anything else is ignored. *)
 
 type t
 
@@ -25,8 +25,11 @@ val feed : t -> string -> t * Event.t list
 
 (** Tells whether some bytes are waiting for the rest of their sequence.
 
+    The bytes of a paste that is still arriving do not count: a pause says
+    nothing then, since the sequence that ends the paste is on its way.
+
     @param parser The parser to inspect.
-    @return [true] when a call to {!flush} would produce something. *)
+    @return [true] when settling the pending bytes with {!flush} makes sense. *)
 val has_pending : t -> bool
 
 (** Gives up waiting for the rest of a sequence.
