@@ -37,6 +37,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   the edges of its region and optionally framed by a `Block`. It can wrap long
   lines with `Wrap`, scroll down through the rows and count them
   (`Paragraph.line_count`).
+- `Gauge`: a progress bar filled in steps of an eighth of a cell, with a label
+  that stays readable over the filled part.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
