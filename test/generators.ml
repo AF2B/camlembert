@@ -185,6 +185,25 @@ let print_constraint = function
 ;;
 
 let print_constraints = QCheck2.Print.list print_constraint
+let wrap_alphabet = [ "a"; "b"; "c"; " "; " "; "\u{6F22}" ]
+let max_wrapped_length = 30
+let narrowest_wide_row = 2
+let widest_row = 12
+
+(** Text made of letters, spaces and a wide character, to be wrapped. *)
+let wrappable_text =
+  QCheck2.Gen.(
+    let+ pieces =
+      list_size
+        (int_range Int.zero max_wrapped_length)
+        (oneof_list wrap_alphabet)
+    in
+    String.concat "" pieces)
+;;
+
+(** Row widths wide enough to hold any single character of [wrappable_text]. *)
+let row_width = QCheck2.Gen.int_range narrowest_wide_row widest_row
+
 let max_line_count = 4
 let alignment = QCheck2.Gen.oneof_list Alignment.[ Left; Center; Right ]
 

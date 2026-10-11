@@ -8,6 +8,7 @@ module Paragraph = Camlembert.Paragraph
 module Rect = Camlembert.Rect
 module Style = Camlembert.Style
 module Text = Camlembert.Text
+module Wrap = Camlembert.Wrap
 
 let origin = 0
 let room_width = 6
@@ -132,6 +133,74 @@ let test_empty_area_draws_nothing () =
     (Buffer.to_lines buffer)
 ;;
 
+let wrapping_room_width = 10
+let wrapping_room_height = 3
+let scrolled_rows = 1
+let scrolled_past_the_end = 10
+let negative_scroll = -1
+let quick_fox = "the quick brown fox"
+
+let test_wrapping_breaks_long_lines_into_rows () =
+  let paragraph = Paragraph.make ~wrap:Wrap.Word (text_of [ quick_fox ]) in
+  Alcotest.(check (list string))
+    "wrapped"
+    [ "the quick "; "brown fox "; blank_line ~width:wrapping_room_width ]
+    (lines_of paragraph ~width:wrapping_room_width ~height:wrapping_room_height)
+;;
+
+let test_scrolling_hides_the_first_rows () =
+  let paragraph =
+    Paragraph.make ~scroll:scrolled_rows (text_of [ "one"; "two"; "three" ])
+  in
+  Alcotest.(check (list string))
+    "from the second row"
+    [ "two   "; "three " ]
+    (lines_of paragraph ~width:room_width ~height:short_room_height)
+;;
+
+let test_scrolling_counts_rows_after_wrapping () =
+  let paragraph =
+    Paragraph.make ~wrap:Wrap.Word ~scroll:scrolled_rows (text_of [ quick_fox ])
+  in
+  Alcotest.(check (list string))
+    "second wrapped row first"
+    [ "brown fox "; blank_line ~width:wrapping_room_width ]
+    (lines_of paragraph ~width:wrapping_room_width ~height:short_room_height)
+;;
+
+let test_scrolling_past_the_end_shows_nothing () =
+  let paragraph =
+    Paragraph.make ~scroll:scrolled_past_the_end (text_of [ "one"; "two" ])
+  in
+  Alcotest.(check (list string))
+    "blank"
+    [ blank_line ~width:room_width; blank_line ~width:room_width ]
+    (lines_of paragraph ~width:room_width ~height:short_room_height)
+;;
+
+let test_negative_scroll_is_rejected () =
+  Alcotest.check_raises
+    "negative"
+    (Invalid_argument "Paragraph.make: negative scroll")
+    (fun () ->
+       ignore (Paragraph.make ~scroll:negative_scroll (text_of [ "one" ])))
+;;
+
+let test_line_count () =
+  let lines = [ "one"; quick_fox; "three" ] in
+  let without_wrapping = Paragraph.make (text_of lines) in
+  let with_wrapping = Paragraph.make ~wrap:Wrap.Word (text_of lines) in
+  let wrapped_row_count = 4 in
+  Alcotest.(check int)
+    "one row per line"
+    (List.length lines)
+    (Paragraph.line_count without_wrapping ~width:wrapping_room_width);
+  Alcotest.(check int)
+    "rows after wrapping"
+    wrapped_row_count
+    (Paragraph.line_count with_wrapping ~width:wrapping_room_width)
+;;
+
 let fit_to_width ~width text =
   let cut =
     if String.length text > width then String.sub text Int.zero width else text
@@ -203,6 +272,26 @@ let () =
             "rows beyond the bottom"
             `Quick
             test_rows_beyond_the_bottom_are_left_out
+        ] )
+    ; ( "wrapping and scrolling"
+      , [ Alcotest.test_case
+            "wrapping"
+            `Quick
+            test_wrapping_breaks_long_lines_into_rows
+        ; Alcotest.test_case "scroll" `Quick test_scrolling_hides_the_first_rows
+        ; Alcotest.test_case
+            "scroll after wrapping"
+            `Quick
+            test_scrolling_counts_rows_after_wrapping
+        ; Alcotest.test_case
+            "scroll past the end"
+            `Quick
+            test_scrolling_past_the_end_shows_nothing
+        ; Alcotest.test_case
+            "negative scroll"
+            `Quick
+            test_negative_scroll_is_rejected
+        ; Alcotest.test_case "line count" `Quick test_line_count
         ] )
     ; ( "block and style"
       , [ Alcotest.test_case
