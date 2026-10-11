@@ -35,6 +35,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   inside it goes.
 - `Paragraph`: shows text line by line, aligned left, center or right, cut at
   the edges of its region and optionally framed by a `Block`.
+- `Wrap`: breaks long lines into rows that fit a width, between words or at
+  any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
   Backspace, Escape, cursor and editing keys, F1 to F12, with Shift, Control
   and Alt) and a parser that turns the bytes of a terminal into them, even
