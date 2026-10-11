@@ -75,6 +75,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - `Canvas`: a drawing surface with its own coordinates, where points,
   segments, rectangles and circles are drawn with Braille patterns, half
   blocks, blocks or bullets, with text labels written over them.
+- `Chart`: datasets drawn between two axes, as separate points or joined by
+  lines, with axis labels and titles and a legend, using the markers of
+  `Canvas`.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
