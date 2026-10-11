@@ -56,6 +56,22 @@ let draw_rows list buffer inner selection =
   |> List.iter draw_row
 ;;
 
+let inner_area list area =
+  match list.block with
+  | None -> area
+  | Some block -> Block.inner block area
+;;
+
+let index_at list selection ~area { Position.column; row } =
+  let inner = inner_area list area in
+  let item_count = List.length list.items in
+  Selection.reveal selection ~item_count ~visible_rows:inner.Rect.height;
+  let index = Selection.offset selection + (row - inner.Rect.row) in
+  if Rect.contains inner ~column ~row && index < item_count
+  then Some index
+  else None
+;;
+
 let widget list area buffer selection =
   let inner =
     match list.block with
