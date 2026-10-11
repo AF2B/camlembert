@@ -10,7 +10,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 ### Added
 
 - `Rect`: a rectangular region of the terminal, with helpers to measure it,
-  intersect it with another one and shrink it.
+  intersect it with another one, shrink it and center a smaller one in it, for
+  popups.
 - `Color`: the 16 named ANSI colors, the 256-color palette and 24-bit RGB.
 - `Style`: foreground, background and text effects of a cell, with `patch` to
   layer one style over another.

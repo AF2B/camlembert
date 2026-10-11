@@ -48,6 +48,21 @@ let shrink rect ~top ~bottom ~left ~right =
     }
 ;;
 
+let halving_divisor = 2
+
+let centered rect ~width ~height =
+  if is_negative width || is_negative height
+  then invalid_arg "Rect.centered: negative size"
+  else (
+    let fitting_width = Int.min width rect.width in
+    let fitting_height = Int.min height rect.height in
+    { column = rect.column + ((rect.width - fitting_width) / halving_divisor)
+    ; row = rect.row + ((rect.height - fitting_height) / halving_divisor)
+    ; width = fitting_width
+    ; height = fitting_height
+    })
+;;
+
 let iter_positions rect visit =
   for row = rect.row to pred (bottom rect) do
     for column = rect.column to pred (right rect) do

@@ -70,6 +70,19 @@ val intersection : t -> t -> t
     @raise Invalid_argument if any margin is negative. *)
 val shrink : t -> top:int -> bottom:int -> left:int -> right:int -> t
 
+(** Places a rectangle of some size in the middle of another one.
+
+    A leftover odd cell goes to the right or to the bottom. A size larger than
+    the container is cut to the container, which suits popups on small
+    screens.
+
+    @param rect The rectangle to center in.
+    @param width Columns of the new rectangle.
+    @param height Rows of the new rectangle.
+    @return The centered rectangle.
+    @raise Invalid_argument if a size is negative. *)
+val centered : t -> width:int -> height:int -> t
+
 (** Visits every position of a rectangle, row by row.
 
     @param rect The rectangle to walk through.
