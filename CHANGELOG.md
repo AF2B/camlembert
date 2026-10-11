@@ -35,8 +35,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - `Alignment`, `Span`, `Line` and `Text`: styled text made of spans and lines,
   with left, center and right alignment.
 - `Block`: a frame with optional borders (plain, rounded, double or thick), a
-  title and a background style, and `Block.inner` to find where the content
-  inside it goes.
+  title, a footer, padding and a background style, and `Block.inner` to find
+  where the content inside it goes.
 - `Paragraph`: shows text line by line, aligned left, center or right, cut at
   the edges of its region and optionally framed by a `Block`. It can wrap long
   lines with `Wrap`, scroll down through the rows and count them
