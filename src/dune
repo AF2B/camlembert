@@ -1,0 +1,5 @@
+(library
+ (name camlembert)
+ (public_name camlembert))
+
+(include_subdirs unqualified)
