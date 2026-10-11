@@ -5,22 +5,6 @@ type t =
   ; values : int list
   }
 
-let eighths_per_cell = 8
-
-(* From an empty cell to a full one, in steps of an eighth. *)
-let bar_symbols =
-  [| " "
-   ; "\u{2581}"
-   ; "\u{2582}"
-   ; "\u{2583}"
-   ; "\u{2584}"
-   ; "\u{2585}"
-   ; "\u{2586}"
-   ; "\u{2587}"
-   ; "\u{2588}"
-  |]
-;;
-
 let make ?block ?(style = Style.default) ?maximum values =
   let is_negative value = value < Int.zero in
   if
@@ -44,27 +28,17 @@ let last_values values ~count =
 
 (* How many eighths of the full height a value fills. *)
 let filled_eighths ~value ~maximum ~height =
-  let total_eighths = height * eighths_per_cell in
-  if maximum <= Int.zero
-  then Int.zero
-  else
-    Int.min
-      total_eighths
-      (Float.to_int
-         (Float.round
-            (Float.of_int value
-             *. Float.of_int total_eighths
-             /. Float.of_int maximum)))
+  let fraction =
+    if maximum <= Int.zero
+    then 0.0
+    else Float.of_int value /. Float.of_int maximum
+  in
+  Eighths.filled ~fraction ~cells:height
 ;;
 
 (* The symbol of the cell [level] cells above the bottom of a bar. *)
 let bar_symbol ~eighths ~level =
-  let in_this_cell =
-    Int.max
-      Int.zero
-      (Int.min eighths_per_cell (eighths - (level * eighths_per_cell)))
-  in
-  bar_symbols.(in_this_cell)
+  Eighths.lower_block (eighths - (level * Eighths.per_cell))
 ;;
 
 let draw_bars sparkline buffer inner =

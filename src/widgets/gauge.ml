@@ -10,22 +10,8 @@ type t =
 let lowest_ratio = 0.0
 let highest_ratio = 1.0
 let percent_scale = 100.0
-let eighths_per_cell = 8
 let halving_divisor = 2
 let half_of value = value / halving_divisor
-
-(* The block that fills a cell from the left, from an eighth to seven eighths. *)
-let partial_blocks =
-  [ "\u{258F}"
-  ; "\u{258E}"
-  ; "\u{258D}"
-  ; "\u{258C}"
-  ; "\u{258B}"
-  ; "\u{258A}"
-  ; "\u{2589}"
-  ]
-;;
-
 let filled_style = Style.make ~modifiers:[ Style.Reversed ] ()
 let filled_symbol = " "
 
@@ -56,12 +42,9 @@ let styled_label gauge =
 
 let draw_bar gauge buffer inner =
   let { Rect.column; row; width; height } = inner in
-  let filled_eighths =
-    Float.to_int
-      (Float.round (gauge.ratio *. Float.of_int (width * eighths_per_cell)))
-  in
-  let full_cells = filled_eighths / eighths_per_cell in
-  let partial_eighths = filled_eighths mod eighths_per_cell in
+  let filled_eighths = Eighths.filled ~fraction:gauge.ratio ~cells:width in
+  let full_cells = filled_eighths / Eighths.per_cell in
+  let partial_eighths = filled_eighths mod Eighths.per_cell in
   let draw_row current_row =
     Buffer.set_string
       buffer
@@ -78,7 +61,7 @@ let draw_bar gauge buffer inner =
         ~row:current_row
         ~max_width:Int.one
         ~style:gauge.gauge_style
-        (List.nth partial_blocks (pred partial_eighths))
+        (Eighths.left_block partial_eighths)
   in
   List.init height (fun offset -> row + offset) |> List.iter draw_row
 ;;
