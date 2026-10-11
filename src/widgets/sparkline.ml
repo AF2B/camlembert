@@ -5,6 +5,8 @@ type t =
   ; values : int list
   }
 
+let no_fraction = 0.0
+
 let make ?block ?(style = Style.default) ?maximum values =
   let is_negative value = value < Int.zero in
   if
@@ -30,7 +32,7 @@ let last_values values ~count =
 let filled_eighths ~value ~maximum ~height =
   let fraction =
     if maximum <= Int.zero
-    then 0.0
+    then no_fraction
     else Float.of_int value /. Float.of_int maximum
   in
   Eighths.filled ~fraction ~cells:height

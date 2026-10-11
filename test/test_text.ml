@@ -10,10 +10,11 @@ module Style = Camlembert.Style
 module Text = Camlembert.Text
 
 let origin = 0
+let halving_divisor = 2
 let room_width = 10
 let content_width = 4
 let free_columns = room_width - content_width
-let half_of_free_columns = free_columns / 2
+let half_of_free_columns = free_columns / halving_divisor
 let oversized_content_width = 15
 let ascii_greeting = "hello"
 let wide_greeting = "\u{6F22}\u{5B57}"

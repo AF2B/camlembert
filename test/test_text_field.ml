@@ -18,6 +18,7 @@ let narrow_width = 5
 let one_row = 1
 let framed_height = 3
 let border_thickness = 1
+let both_sides = 2
 let long_text = "abcdefghij"
 
 (* The cursor needs the cell after the last character, so one fewer fits. *)
@@ -110,7 +111,7 @@ let test_a_block_frames_the_field () =
       (render
          (Text_field.make ~block ())
          (Line_edit.create ~text:greeting ())
-         ~width:(field_width + (2 * border_thickness))
+         ~width:(field_width + (both_sides * border_thickness))
          ~height:framed_height)
   in
   Alcotest.(check string)
@@ -169,7 +170,7 @@ let test_the_cursor_follows_the_block () =
        edit
        ~area:
          (area
-            ~width:(field_width + (2 * border_thickness))
+            ~width:(field_width + (both_sides * border_thickness))
             ~height:framed_height))
 ;;
 
