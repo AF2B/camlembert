@@ -53,6 +53,15 @@ let test_move_cursor_counts_from_one () =
     (Ansi.move_cursor ~column:late_column ~row:second_row)
 ;;
 
+let test_cursor_is_moved_before_it_is_shown () =
+  Alcotest.(check string)
+    "shown"
+    (escape ^ "[2;3H" ^ escape ^ "[?25h")
+    (Ansi.encode_cursor
+       (Some { Camlembert.Position.column = late_column; row = second_row }));
+  Alcotest.(check string) "hidden" (escape ^ "[?25l") (Ansi.encode_cursor None)
+;;
+
 let test_select_style () =
   let rgb =
     Color.Rgb { red = red_channel; green = green_channel; blue = blue_channel }
@@ -207,6 +216,10 @@ let () =
             "move cursor"
             `Quick
             test_move_cursor_counts_from_one
+        ; Alcotest.test_case
+            "cursor"
+            `Quick
+            test_cursor_is_moved_before_it_is_shown
         ; Alcotest.test_case "select style" `Quick test_select_style
         ] )
     ; ( "encode changes"

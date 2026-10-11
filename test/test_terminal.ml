@@ -1,6 +1,7 @@
 module Backend = Camlembert.Backend
 module Buffer = Camlembert.Buffer
 module Frame = Camlembert.Frame
+module Position = Camlembert.Position
 module Rect = Camlembert.Rect
 module Style = Camlembert.Style
 module Terminal = Camlembert.Terminal
@@ -142,6 +143,100 @@ let test_render_widget_hands_over_the_region () =
     (Test_backend.to_lines test_backend)
 ;;
 
+let cursor_at_start = { Position.column = 3; row = 1 }
+let cursor_moved = { Position.column = 5; row = 0 }
+
+let position_testable =
+  Alcotest.testable
+    (fun formatter { Position.column; row } ->
+       Format.fprintf formatter "(%d, %d)" column row)
+    ( = )
+;;
+
+let draw_with_cursor terminal position =
+  Terminal.draw terminal (fun frame -> Frame.set_cursor frame position)
+;;
+
+let draw_without_cursor terminal = Terminal.draw terminal (fun _ -> ())
+
+let test_cursor_is_hidden_unless_a_frame_asks_for_it () =
+  let test_backend, terminal = new_terminal () in
+  draw_without_cursor terminal;
+  Alcotest.(check (option position_testable))
+    "hidden"
+    None
+    (Test_backend.cursor test_backend)
+;;
+
+let test_cursor_follows_the_frames () =
+  let test_backend, terminal = new_terminal () in
+  draw_with_cursor terminal cursor_at_start;
+  Alcotest.(check (option position_testable))
+    "shown"
+    (Some cursor_at_start)
+    (Test_backend.cursor test_backend);
+  draw_with_cursor terminal cursor_moved;
+  Alcotest.(check (option position_testable))
+    "moved"
+    (Some cursor_moved)
+    (Test_backend.cursor test_backend);
+  draw_without_cursor terminal;
+  Alcotest.(check (option position_testable))
+    "hidden again"
+    None
+    (Test_backend.cursor test_backend)
+;;
+
+(* Counts how many times the backend is told about the cursor. *)
+let counting_cursor_calls test_backend =
+  let calls = ref Int.zero in
+  let backend = Test_backend.backend test_backend in
+  let counting_backend =
+    { backend with
+      Backend.set_cursor =
+        (fun position ->
+          incr calls;
+          backend.Backend.set_cursor position)
+    }
+  in
+  counting_backend, calls
+;;
+
+let test_a_shown_cursor_is_put_back_after_every_frame () =
+  let test_backend =
+    Test_backend.create ~width:screen_width ~height:screen_height
+  in
+  let backend, calls = counting_cursor_calls test_backend in
+  let terminal = Terminal.create backend in
+  let frame_count = 3 in
+  for _ = Int.one to frame_count do
+    draw_with_cursor terminal cursor_at_start
+  done;
+  Alcotest.(check int) "once per frame" frame_count !calls
+;;
+
+let test_a_hidden_cursor_is_hidden_only_once () =
+  let test_backend =
+    Test_backend.create ~width:screen_width ~height:screen_height
+  in
+  let backend, calls = counting_cursor_calls test_backend in
+  let terminal = Terminal.create backend in
+  let frames_without_cursor = 3 in
+  for _ = Int.one to frames_without_cursor do
+    draw_without_cursor terminal
+  done;
+  Alcotest.(check int) "never told" Int.zero !calls;
+  draw_with_cursor terminal cursor_at_start;
+  for _ = Int.one to frames_without_cursor do
+    draw_without_cursor terminal
+  done;
+  let shown_once_and_hidden_once = 2 in
+  Alcotest.(check int)
+    "shown, then hidden once"
+    shown_once_and_hidden_once
+    !calls
+;;
+
 let property_the_screen_always_shows_the_last_frame =
   QCheck2.Test.make
     ~name:"after every draw the screen shows exactly that frame"
@@ -188,6 +283,24 @@ let () =
             "render_widget region"
             `Quick
             test_render_widget_hands_over_the_region
+        ] )
+    ; ( "cursor"
+      , [ Alcotest.test_case
+            "hidden by default"
+            `Quick
+            test_cursor_is_hidden_unless_a_frame_asks_for_it
+        ; Alcotest.test_case
+            "follows the frames"
+            `Quick
+            test_cursor_follows_the_frames
+        ; Alcotest.test_case
+            "put back after every frame"
+            `Quick
+            test_a_shown_cursor_is_put_back_after_every_frame
+        ; Alcotest.test_case
+            "hidden only once"
+            `Quick
+            test_a_hidden_cursor_is_hidden_only_once
         ] )
     ; ( "screen changes"
       , [ Alcotest.test_case
