@@ -204,12 +204,12 @@ let test_an_unfinished_start_marker_is_a_normal_pending_sequence () =
 ;;
 
 let test_unknown_sequences_are_ignored () =
-  let mouse_report = escape ^ "[<0;10;5M" in
+  let focus_report = escape ^ "[I" in
   let unknown_final = escape ^ "[99X" in
   Alcotest.(check (list event_testable))
     "ignored"
     [ char "a"; char "b" ]
-    (events_of ("a" ^ mouse_report ^ unknown_final ^ "b"))
+    (events_of ("a" ^ focus_report ^ unknown_final ^ "b"))
 ;;
 
 let test_invalid_bytes_are_dropped () =

@@ -71,6 +71,26 @@ let f10_code = 21
 let f11_code = 23
 let f12_code = 24
 
+(* Mouse reports are an escape, a bracket, a less-than sign, then the button
+   code, the column and the row. They end with M when a button goes down or the
+   mouse moves, and with m when a button comes up. *)
+let mouse_marker = '<'
+let mouse_down_final = 'M'
+let mouse_up_final = 'm'
+let button_bits_mask = 3
+let mouse_shift_bit = 4
+let mouse_alt_bit = 8
+let mouse_control_bit = 16
+let mouse_motion_bit = 32
+let mouse_wheel_bit = 64
+let left_button_bits = 0
+let middle_button_bits = 1
+let right_button_bits = 2
+let wheel_up_bits = 0
+let wheel_down_bits = 1
+let wheel_left_bits = 2
+let wheel_right_bits = 3
+
 (* A bracketed paste starts with one sequence and ends with another. *)
 let paste_start_code = 200
 let paste_end_code = 201
@@ -266,6 +286,76 @@ let csi_key numbers final =
     List.assoc_opt final cursor_keys |> Option.map (fun key -> key, modifiers)
 ;;
 
+let buttons =
+  [ left_button_bits, Event.Left_button
+  ; middle_button_bits, Event.Middle_button
+  ; right_button_bits, Event.Right_button
+  ]
+;;
+
+let wheel_actions =
+  [ wheel_up_bits, Event.Scroll_up
+  ; wheel_down_bits, Event.Scroll_down
+  ; wheel_left_bits, Event.Scroll_left
+  ; wheel_right_bits, Event.Scroll_right
+  ]
+;;
+
+let mouse_modifiers code =
+  { Event.shift = code land mouse_shift_bit <> Int.zero
+  ; alt = code land mouse_alt_bit <> Int.zero
+  ; control = code land mouse_control_bit <> Int.zero
+  }
+;;
+
+(* What the button code of a report says the mouse did. *)
+let mouse_action code ~released =
+  let bits = code land button_bits_mask in
+  if code land mouse_wheel_bit <> Int.zero
+  then List.assoc_opt bits wheel_actions
+  else
+    List.assoc_opt bits buttons
+    |> Option.map (fun button ->
+      if code land mouse_motion_bit <> Int.zero
+      then Event.Drag button
+      else if released
+      then Event.Release button
+      else Event.Press button)
+;;
+
+(* Terminals count columns and rows from one. *)
+let mouse_event numbers ~released =
+  match numbers with
+  | [ code; column; row ] ->
+    mouse_action code ~released
+    |> Option.map (fun action ->
+      Event.Mouse
+        { action
+        ; position = { Position.column = pred column; row = pred row }
+        ; modifiers = mouse_modifiers code
+        })
+  | _ -> None
+;;
+
+let is_mouse_report body final =
+  body <> ""
+  && body.[Int.zero] = mouse_marker
+  && (final = mouse_down_final || final = mouse_up_final)
+;;
+
+let decode_mouse body final length =
+  let numbers_text =
+    String.sub body single_byte (String.length body - single_byte)
+  in
+  match
+    Option.bind
+      (numbers_of numbers_text)
+      (mouse_event ~released:(final = mouse_up_final))
+  with
+  | Some event -> Reported (event, length)
+  | None -> Ignored length
+;;
+
 let matches_at input marker ~position =
   let rec compare_from offset =
     offset >= String.length marker
@@ -303,7 +393,9 @@ let decode_sequence input position =
   | Final final_index ->
     let length = succ final_index - position in
     let body = String.sub input body_start (final_index - body_start) in
-    if matches_at input paste_start_marker ~position
+    if is_mouse_report body input.[final_index]
+    then decode_mouse body input.[final_index] length
+    else if matches_at input paste_start_marker ~position
     then
       decode_paste
         input

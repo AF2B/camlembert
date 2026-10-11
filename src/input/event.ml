@@ -17,6 +17,20 @@ type key =
   | Page_down
   | Function of int
 
+type button =
+  | Left_button
+  | Middle_button
+  | Right_button
+
+type mouse_action =
+  | Press of button
+  | Release of button
+  | Drag of button
+  | Scroll_up
+  | Scroll_down
+  | Scroll_left
+  | Scroll_right
+
 type modifiers =
   { shift : bool
   ; control : bool
@@ -33,6 +47,11 @@ type t =
       ; height : int
       }
   | Paste of string
+  | Mouse of
+      { action : mouse_action
+      ; position : Position.t
+      ; modifiers : modifiers
+      }
 
 let no_modifiers = { shift = false; control = false; alt = false }
 let key_press ?(modifiers = no_modifiers) key = Key { key; modifiers }
@@ -58,6 +77,22 @@ let key_name = function
   | Function number -> Printf.sprintf "Function %d" number
 ;;
 
+let button_name = function
+  | Left_button -> "Left_button"
+  | Middle_button -> "Middle_button"
+  | Right_button -> "Right_button"
+;;
+
+let action_name = function
+  | Press button -> Printf.sprintf "Press %s" (button_name button)
+  | Release button -> Printf.sprintf "Release %s" (button_name button)
+  | Drag button -> Printf.sprintf "Drag %s" (button_name button)
+  | Scroll_up -> "Scroll_up"
+  | Scroll_down -> "Scroll_down"
+  | Scroll_left -> "Scroll_left"
+  | Scroll_right -> "Scroll_right"
+;;
+
 let held_modifier_names { shift; control; alt } =
   [ shift, "shift"; control, "control"; alt, "alt" ]
   |> List.filter_map (fun (held, name) -> if held then Some name else None)
@@ -73,4 +108,12 @@ let pp formatter = function
   | Resize { width; height } ->
     Format.fprintf formatter "Resize { width = %d; height = %d }" width height
   | Paste pasted -> Format.fprintf formatter "Paste %S" pasted
+  | Mouse { action; position; modifiers } ->
+    Format.fprintf
+      formatter
+      "Mouse { action = %s; column = %d; row = %d; modifiers = [%s] }"
+      (action_name action)
+      position.Position.column
+      position.Position.row
+      (String.concat "; " (held_modifier_names modifiers))
 ;;

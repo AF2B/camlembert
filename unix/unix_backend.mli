@@ -9,6 +9,9 @@ val backend : unit -> Camlembert.Backend.t
 
 (** Something the terminal can be asked to report, besides key presses. *)
 type feature =
+  | Mouse
+  (** Mouse presses, releases, drags and wheel turns arrive as
+          {!Camlembert.Event.Mouse}. *)
   | Bracketed_paste
   (** Pasted text arrives as one {!Camlembert.Event.Paste} instead of as
           key presses. *)

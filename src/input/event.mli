@@ -19,7 +19,23 @@ type key =
   | Page_down
   | Function of int (** A function key: [Function 5] is F5. *)
 
-(** The modifier keys held while a key was pressed. *)
+(** A button of the mouse. *)
+type button =
+  | Left_button
+  | Middle_button
+  | Right_button
+
+(** What the mouse did. *)
+type mouse_action =
+  | Press of button (** A button went down. *)
+  | Release of button (** A button came back up. *)
+  | Drag of button (** The mouse moved while a button was held down. *)
+  | Scroll_up (** The wheel turned away from the user. *)
+  | Scroll_down (** The wheel turned towards the user. *)
+  | Scroll_left
+  | Scroll_right
+
+(** The modifier keys held while a key was pressed or the mouse was used. *)
 type modifiers =
   { shift : bool
   ; control : bool
@@ -38,6 +54,13 @@ type t =
   | Paste of string
   (** Text was pasted. It only arrives when the terminal was asked to mark
           pastes, and then it comes whole instead of as key presses. *)
+  | Mouse of
+      { action : mouse_action
+      ; position : Position.t
+      ; modifiers : modifiers
+      }
+  (** The mouse did something over a cell. It only arrives when the
+          terminal was asked to report the mouse. *)
 
 (** No modifier key held. *)
 val no_modifiers : modifiers

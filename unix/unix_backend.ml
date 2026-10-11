@@ -28,13 +28,17 @@ let require_terminal () =
       "Unix_backend.with_terminal: standard input and output must be a terminal"
 ;;
 
-type feature = Bracketed_paste
+type feature =
+  | Mouse
+  | Bracketed_paste
 
 let enable_sequence = function
+  | Mouse -> Ansi.enable_mouse
   | Bracketed_paste -> Ansi.enable_bracketed_paste
 ;;
 
 let disable_sequence = function
+  | Mouse -> Ansi.disable_mouse
   | Bracketed_paste -> Ansi.disable_bracketed_paste
 ;;
 
