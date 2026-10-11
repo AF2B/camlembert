@@ -1,9 +1,11 @@
-(* A dashboard with three tabs. Overview shows gauges and a chart that move by
-   themselves, Packages a table to move through, and Logs a text to scroll.
-   Tab and Shift+Tab, or Left and Right, change the tab. Up, Down, Home, End,
-   Page Up and Page Down move or scroll. q or Escape quits. *)
+(* A dashboard with three tabs. Overview shows gauges, a chart and bars that
+   move by themselves. Packages has a filter to type in and a table to move
+   through. Logs is a text to scroll. Everything works with the keyboard and
+   with the mouse: click a tab or a row, turn the wheel, paste into the filter.
+   Tab and Shift+Tab change the tab, Escape asks to quit. *)
 
 module Alignment = Camlembert.Alignment
+module Bar_chart = Camlembert.Bar_chart
 module Block = Camlembert.Block
 module Clear = Camlembert.Clear
 module Color = Camlembert.Color
@@ -13,20 +15,22 @@ module Frame = Camlembert.Frame
 module Gauge = Camlembert.Gauge
 module Layout = Camlembert.Layout
 module Line = Camlembert.Line
+module Line_edit = Camlembert.Line_edit
 module Paragraph = Camlembert.Paragraph
 module Rect = Camlembert.Rect
 module Scrollbar = Camlembert.Scrollbar
 module Selection = Camlembert.Selection
 module Sparkline = Camlembert.Sparkline
-module Stateful_widget = Camlembert.Stateful_widget
 module Style = Camlembert.Style
 module Table = Camlembert.Table
 module Tabs = Camlembert.Tabs
 module Terminal = Camlembert.Terminal
 module Text = Camlembert.Text
+module Text_field = Camlembert.Text_field
 module Widget = Camlembert.Widget
 module Wrap = Camlembert.Wrap
 module Input = Camlembert_unix.Input
+module Unix_backend = Camlembert_unix.Unix_backend
 
 type tab =
   | Overview
@@ -54,15 +58,19 @@ let shifted_tab tab ~by =
 (* Sizes of the parts of the screen. *)
 let tabs_height = 3
 let footer_height = 1
+let filter_height = 3
 let border_thickness = 1
 let both_sides = 2
-let version_width = 10
-let size_width = 9
 let gauge_height = 3
 let gauges_width = 34
+let bars_height = 9
+let version_width = 10
+let size_width = 9
 let remaining_weight = 1
+let dialog_width = 34
+let dialog_height = 5
 
-(* The numbers behind the gauges and the chart are made up. *)
+(* The numbers behind the gauges, the chart and the bars are made up. *)
 let tick_seconds = 0.25
 let history_size = 60
 let percent_scale = 100.0
@@ -72,7 +80,13 @@ let cpu_wave_length = 4.0
 let memory_start = 30
 let memory_cycle = 70
 let disk_ratio = 0.72
+let requests_baseline = 20
+let requests_cycle = 60
+let requests_per_tick = 3
+let requests_per_hour = 17
+let hour_count = 6
 let log_line_count = 60
+let wheel_rows = 3
 
 let cpu_load ~tick =
   cpu_baseline
@@ -82,24 +96,33 @@ let cpu_load ~tick =
 let memory_load ~tick = (memory_start + tick) mod memory_cycle
 let ratio_of_percent percent = Float.of_int percent /. percent_scale
 
-let package_rows =
-  List.map
-    (fun (name, version, size) ->
-       [ Line.of_string name
-       ; Line.of_string version
-       ; Line.of_string ~alignment:Alignment.Right size
-       ])
-    [ "alcotest", "1.9.1", "1.2 MB"
-    ; "camlembert", "0.1.0", "340 KB"
-    ; "dune", "3.24.2", "28.4 MB"
-    ; "ocaml-lsp-server", "1.27.0", "9.8 MB"
-    ; "ocamlformat", "0.29.0", "14.1 MB"
-    ; "odoc", "3.2.1", "6.3 MB"
-    ; "qcheck-core", "0.91", "820 KB"
-    ; "uucp", "18.0.0", "21.7 MB"
-    ; "uuseg", "18.0.0", "1.1 MB"
-    ; "utop", "2.17.0", "3.9 MB"
-    ]
+let requests ~tick ~hour =
+  requests_baseline
+  + (((tick * requests_per_tick) + (hour * requests_per_hour))
+     mod requests_cycle)
+;;
+
+let all_packages =
+  [ "alcotest", "1.9.1", "1.2 MB"
+  ; "camlembert", "0.1.0", "340 KB"
+  ; "dune", "3.24.2", "28.4 MB"
+  ; "ocaml-lsp-server", "1.27.0", "9.8 MB"
+  ; "ocamlformat", "0.29.0", "14.1 MB"
+  ; "odoc", "3.2.1", "6.3 MB"
+  ; "qcheck-core", "0.91", "820 KB"
+  ; "uucp", "18.0.0", "21.7 MB"
+  ; "uuseg", "18.0.0", "1.1 MB"
+  ; "utop", "2.17.0", "3.9 MB"
+  ]
+;;
+
+let contains ~sub text =
+  let rec from index =
+    index + String.length sub <= String.length text
+    && (String.equal (String.sub text index (String.length sub)) sub
+        || from (succ index))
+  in
+  from Int.zero
 ;;
 
 let log_messages =
@@ -125,8 +148,10 @@ type model =
   { tab : tab
   ; ticks : int
   ; cpu_history : int list
+  ; filter : Line_edit.t
   ; packages : Selection.t
   ; log_scroll : int
+  ; confirming_quit : bool
   }
 
 let initial_model () =
@@ -135,8 +160,10 @@ let initial_model () =
   { tab = Overview
   ; ticks = history_size
   ; cpu_history = List.init history_size (fun tick -> cpu_load ~tick)
+  ; filter = Line_edit.create ()
   ; packages
   ; log_scroll = Int.zero
+  ; confirming_quit = false
   }
 ;;
 
@@ -165,6 +192,89 @@ let framed title =
     ~border_style
     ~title:(Line.of_string ~style:title_style (" " ^ title ^ " "))
     ()
+;;
+
+(* The parts of the screen, from top to bottom. *)
+type regions =
+  { tab_bar : Rect.t
+  ; body : Rect.t
+  ; footer : Rect.t
+  }
+
+let regions screen =
+  match
+    Layout.vertical
+      [ Constraint.Length tabs_height
+      ; Constraint.Fill remaining_weight
+      ; Constraint.Length footer_height
+      ]
+      screen
+  with
+  | [ tab_bar; body; footer ] -> { tab_bar; body; footer }
+  | _ -> invalid_arg "Dashboard.regions: expected three regions"
+;;
+
+(* The filter and the table on the Packages tab, from top to bottom. *)
+let packages_regions body =
+  match
+    Layout.vertical
+      [ Constraint.Length filter_height; Constraint.Fill remaining_weight ]
+      body
+  with
+  | [ filter; table ] -> filter, table
+  | _ -> invalid_arg "Dashboard.packages_regions: expected two regions"
+;;
+
+let tab_bar model =
+  Tabs.make
+    ~block:
+      (Block.make
+         ~borders:Block.all_sides
+         ~border_type:Block.Rounded
+         ~border_style
+         ())
+    ~highlight_style:selected_style
+    ~selected:(index_of model.tab)
+    (List.map (fun tab -> Line.of_string (title_of tab)) tabs)
+;;
+
+let filter_field =
+  Text_field.make
+    ~block:(framed "Filter")
+    ~placeholder:"type to filter the packages"
+    ()
+;;
+
+let visible_packages model =
+  let wanted = String.lowercase_ascii (Line_edit.text model.filter) in
+  List.filter
+    (fun (name, _, _) -> contains ~sub:wanted (String.lowercase_ascii name))
+    all_packages
+;;
+
+let packages_table model =
+  Table.make
+    ~block:(framed "Packages")
+    ~header:
+      [ Line.of_string "Package"
+      ; Line.of_string "Version"
+      ; Line.of_string ~alignment:Alignment.Right "Size"
+      ]
+    ~header_style
+    ~highlight_symbol:"\u{25B6} "
+    ~highlight_style:selected_style
+    ~widths:
+      [ Constraint.Fill remaining_weight
+      ; Constraint.Length version_width
+      ; Constraint.Length size_width
+      ]
+    (List.map
+       (fun (name, version, size) ->
+          [ Line.of_string name
+          ; Line.of_string version
+          ; Line.of_string ~alignment:Alignment.Right size
+          ])
+       (visible_packages model))
 ;;
 
 let gauge title ~percent ~color =
@@ -203,33 +313,26 @@ let overview model : Widget.t =
          ~maximum:(Float.to_int percent_scale)
          model.cpu_history)
   in
+  let bars =
+    Bar_chart.widget
+      (Bar_chart.make
+         ~block:(framed "Requests per hour")
+         ~bar_style:(Style.make ~foreground:Color.Magenta ())
+         (List.init hour_count (fun hour ->
+            { Bar_chart.label = Printf.sprintf "h%d" hour
+            ; value = requests ~tick:model.ticks ~hour
+            })))
+  in
   Widget.split
     ~direction:Layout.Horizontal
     [ Constraint.Length gauges_width, gauges
-    ; Constraint.Fill remaining_weight, chart
+    ; ( Constraint.Fill remaining_weight
+      , Widget.split
+          ~direction:Layout.Vertical
+          [ Constraint.Fill remaining_weight, chart
+          ; Constraint.Length bars_height, bars
+          ] )
     ]
-;;
-
-let packages model : Widget.t =
-  let table =
-    Table.make
-      ~block:(framed "Packages")
-      ~header:
-        [ Line.of_string "Package"
-        ; Line.of_string "Version"
-        ; Line.of_string ~alignment:Alignment.Right "Size"
-        ]
-      ~header_style
-      ~highlight_symbol:"\u{25B6} "
-      ~highlight_style:selected_style
-      ~widths:
-        [ Constraint.Fill remaining_weight
-        ; Constraint.Length version_width
-        ; Constraint.Length size_width
-        ]
-      package_rows
-  in
-  Stateful_widget.with_state (Table.widget table) model.packages
 ;;
 
 let log_paragraph model =
@@ -240,18 +343,16 @@ let log_paragraph model =
     log_text
 ;;
 
-(* How many rows of the log are visible, and how wide they are, on a screen. *)
-let log_viewport screen =
-  let chrome = tabs_height + footer_height + (both_sides * border_thickness) in
-  ( screen.Rect.width - (both_sides * border_thickness)
-  , Int.max Int.one (screen.Rect.height - chrome) )
+(* How wide and how tall the visible part of the log is on a body region. *)
+let log_viewport body =
+  ( body.Rect.width - (both_sides * border_thickness)
+  , Int.max Int.one (body.Rect.height - (both_sides * border_thickness)) )
 ;;
 
 let logs model : Widget.t =
   fun area buffer ->
   let paragraph = log_paragraph model in
-  let width = area.Rect.width - (both_sides * border_thickness) in
-  let height = area.Rect.height - (both_sides * border_thickness) in
+  let width, height = log_viewport area in
   Paragraph.widget paragraph area buffer;
   Scrollbar.widget
     (Scrollbar.make
@@ -271,51 +372,61 @@ let logs model : Widget.t =
 ;;
 
 let help_for = function
-  | Overview -> "The numbers move by themselves"
-  | Packages -> "Up, Down, Home, End move"
-  | Logs -> "Up, Down, PgUp, PgDn scroll"
+  | Overview -> "Click a tab | Tab switches tab | Esc quits"
+  | Packages -> "Type to filter | Up, Down or click move | Esc quits"
+  | Logs -> "Up, Down, PgUp, PgDn or the wheel scroll | Esc quits"
 ;;
 
 let footer model =
   Paragraph.widget
     (Paragraph.make
        ~alignment:Alignment.Center
-       [ Line.of_string
-           ~style:hint_style
-           (help_for model.tab ^ " | Tab switches tab | q quits")
-       ])
+       [ Line.of_string ~style:hint_style (help_for model.tab) ])
 ;;
 
-let tab_bar model =
-  Tabs.widget
-    (Tabs.make
-       ~block:
-         (Block.make
-            ~borders:Block.all_sides
-            ~border_type:Block.Rounded
-            ~border_style
-            ())
-       ~highlight_style:selected_style
-       ~selected:(index_of model.tab)
-       (List.map (fun tab -> Line.of_string (title_of tab)) tabs))
+let quit_dialog =
+  Paragraph.widget
+    (Paragraph.make
+       ~block:(framed "Quit?")
+       ~alignment:Alignment.Center
+       [ Line.of_string "Press y to quit, n to stay" ])
 ;;
 
 let view model frame =
-  let body =
-    match model.tab with
-    | Overview -> overview model
-    | Packages -> packages model
-    | Logs -> logs model
-  in
-  Frame.render_widget
-    frame
-    (Widget.split
-       ~direction:Layout.Vertical
-       [ Constraint.Length tabs_height, tab_bar model
-       ; Constraint.Fill remaining_weight, body
-       ; Constraint.Length footer_height, footer model
-       ])
-    ~area:(Frame.area frame)
+  let screen = Frame.area frame in
+  let regions = regions screen in
+  Frame.render_widget frame (Tabs.widget (tab_bar model)) ~area:regions.tab_bar;
+  (match model.tab with
+   | Overview -> Frame.render_widget frame (overview model) ~area:regions.body
+   | Logs -> Frame.render_widget frame (logs model) ~area:regions.body
+   | Packages ->
+     let filter_region, table_region = packages_regions regions.body in
+     Frame.render_stateful_widget
+       frame
+       (Text_field.widget filter_field)
+       ~area:filter_region
+       model.filter;
+     Frame.render_stateful_widget
+       frame
+       (Table.widget (packages_table model))
+       ~area:table_region
+       model.packages;
+     if not model.confirming_quit
+     then
+       Frame.set_cursor
+         frame
+         (Text_field.cursor_position
+            filter_field
+            model.filter
+            ~area:filter_region));
+  Frame.render_widget frame (footer model) ~area:regions.footer;
+  if model.confirming_quit
+  then (
+    let dialog_area =
+      Rect.centered screen ~width:dialog_width ~height:dialog_height
+    in
+    Frame.render_widget frame Clear.widget ~area:dialog_area;
+    Frame.render_widget frame quit_dialog ~area:dialog_area)
 ;;
 
 let tick model =
@@ -328,63 +439,135 @@ let tick model =
   }
 ;;
 
-let scroll_logs model key ~screen =
-  let width, height = log_viewport screen in
+let scroll_logs model ~by ~screen =
+  let width, height = log_viewport (regions screen).body in
   let line_count = Paragraph.line_count (log_paragraph model) ~width in
   let furthest = Int.max Int.zero (line_count - height) in
-  let scrolled =
-    match key with
-    | Event.Up -> model.log_scroll - Int.one
-    | Event.Down -> model.log_scroll + Int.one
-    | Event.Page_up -> model.log_scroll - height
-    | Event.Page_down -> model.log_scroll + height
-    | Event.Home -> Int.zero
-    | Event.End -> furthest
-    | _ -> model.log_scroll
-  in
-  { model with log_scroll = Int.min furthest (Int.max Int.zero scrolled) }
+  { model with
+    log_scroll = Int.min furthest (Int.max Int.zero (model.log_scroll + by))
+  }
 ;;
 
-let move_in_packages model key =
-  let item_count = List.length package_rows in
-  (match key with
-   | Event.Up -> Selection.select_previous model.packages ~item_count
-   | Event.Down -> Selection.select_next model.packages ~item_count
-   | Event.Home -> Selection.select model.packages (Some Int.zero)
-   | Event.End -> Selection.select model.packages (Some (pred item_count))
-   | _ -> ());
+let scroll_to_end model ~screen = scroll_logs model ~by:Int.max_int ~screen
+let scroll_to_start model ~screen = scroll_logs model ~by:Int.min_int ~screen
+
+let move_in_packages model ~by =
+  let item_count = List.length (visible_packages model) in
+  if by > Int.zero
+  then Selection.select_next model.packages ~item_count
+  else Selection.select_previous model.packages ~item_count;
   model
 ;;
 
-let update model event ~screen =
-  match event with
-  | Event.Key { key = Event.Tab | Event.Right; _ } ->
-    { model with tab = shifted_tab model.tab ~by:Int.one }
-  | Event.Key { key = Event.Backtab | Event.Left; _ } ->
-    { model with tab = shifted_tab model.tab ~by:(Int.neg Int.one) }
-  | Event.Key { key; _ } ->
-    (match model.tab with
-     | Overview -> model
-     | Packages -> move_in_packages model key
-     | Logs -> scroll_logs model key ~screen)
-  | Event.Resize _ | Event.Paste _ | Event.Mouse _ -> model
+let press_key model key ~screen =
+  let page = snd (log_viewport (regions screen).body) in
+  match model.tab, key with
+  | Packages, Event.Up -> move_in_packages model ~by:(Int.neg Int.one)
+  | Packages, Event.Down -> move_in_packages model ~by:Int.one
+  | Logs, Event.Up -> scroll_logs model ~by:(Int.neg Int.one) ~screen
+  | Logs, Event.Down -> scroll_logs model ~by:Int.one ~screen
+  | Logs, Event.Page_up -> scroll_logs model ~by:(Int.neg page) ~screen
+  | Logs, Event.Page_down -> scroll_logs model ~by:page ~screen
+  | Logs, Event.Home -> scroll_to_start model ~screen
+  | Logs, Event.End -> scroll_to_end model ~screen
+  | (Overview | Packages | Logs), _ -> model
 ;;
 
-let wants_to_quit = function
-  | Event.Key { key = Event.Char "q" | Event.Escape; _ } -> true
-  | Event.Key _ | Event.Resize _ | Event.Paste _ | Event.Mouse _ -> false
+let click model position ~screen =
+  let regions = regions screen in
+  match Tabs.index_at (tab_bar model) ~area:regions.tab_bar position with
+  | Some index ->
+    { model with
+      tab = List.nth_opt tabs index |> Option.value ~default:model.tab
+    }
+  | None ->
+    (match model.tab with
+     | Packages ->
+       let _, table_region = packages_regions regions.body in
+       Table.index_at
+         (packages_table model)
+         model.packages
+         ~area:table_region
+         position
+       |> Option.iter (fun row -> Selection.select model.packages (Some row));
+       model
+     | Overview | Logs -> model)
+;;
+
+let turn_wheel model action ~screen =
+  let direction =
+    match action with
+    | Event.Scroll_up -> Int.neg Int.one
+    | _ -> Int.one
+  in
+  match model.tab with
+  | Packages -> move_in_packages model ~by:direction
+  | Logs -> scroll_logs model ~by:(direction * wheel_rows) ~screen
+  | Overview -> model
+;;
+
+(* Typing in the filter starts the table over from its first row. *)
+let edit_filter model event =
+  if Line_edit.handle model.filter event
+  then (
+    Selection.select model.packages (Some Int.zero);
+    true)
+  else false
+;;
+
+let answer_dialog model = function
+  | Event.Key { key = Event.Char "y" | Event.Enter; _ } -> None
+  | Event.Key { key = Event.Char "n" | Event.Escape; _ } ->
+    Some { model with confirming_quit = false }
+  | Event.Key _ | Event.Resize _ | Event.Paste _ | Event.Mouse _ -> Some model
+;;
+
+let update model event ~screen =
+  if model.confirming_quit
+  then answer_dialog model event
+  else (
+    match event with
+    | Event.Key { key = Event.Escape; _ } ->
+      Some { model with confirming_quit = true }
+    | Event.Key { key = Event.Tab; _ } ->
+      Some { model with tab = shifted_tab model.tab ~by:Int.one }
+    | Event.Key { key = Event.Backtab; _ } ->
+      Some { model with tab = shifted_tab model.tab ~by:(Int.neg Int.one) }
+    | Event.Mouse { action = Event.Press Event.Left_button; position; _ } ->
+      Some (click model position ~screen)
+    | Event.Mouse
+        { action = (Event.Scroll_up | Event.Scroll_down) as action; _ } ->
+      Some (turn_wheel model action ~screen)
+    | Event.Key { key; _ } ->
+      if model.tab = Packages && edit_filter model event
+      then Some model
+      else (
+        match model.tab, key with
+        | (Overview | Logs), Event.Char "q" ->
+          Some { model with confirming_quit = true }
+        | (Overview | Logs), Event.Right ->
+          Some { model with tab = shifted_tab model.tab ~by:Int.one }
+        | (Overview | Logs), Event.Left ->
+          Some { model with tab = shifted_tab model.tab ~by:(Int.neg Int.one) }
+        | _ -> Some (press_key model key ~screen))
+    | Event.Paste _ ->
+      if model.tab = Packages then ignore (edit_filter model event);
+      Some model
+    | Event.Resize _ | Event.Mouse _ -> Some model)
 ;;
 
 let rec run terminal events model =
   Terminal.draw terminal (view model);
   match Input.poll events ~timeout:tick_seconds with
   | None -> run terminal events (tick model)
-  | Some event when wants_to_quit event -> ()
   | Some event ->
-    run terminal events (update model event ~screen:(Terminal.area terminal))
+    (match update model event ~screen:(Terminal.area terminal) with
+     | None -> ()
+     | Some updated -> run terminal events updated)
 ;;
 
 let () =
-  Camlembert_unix.Unix_backend.with_terminal (fun terminal ->
-    run terminal (Input.create ()) (initial_model ()))
+  Unix_backend.with_terminal
+    ~features:[ Unix_backend.Mouse; Unix_backend.Bracketed_paste ]
+    (fun terminal -> run terminal (Input.create ()) (initial_model ()))
 ;;

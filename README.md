@@ -12,13 +12,14 @@ the previous frame and sends only the cells that changed to the terminal.
 Early development, not yet published to opam.
 
 Available today: layout by constraints, styled text with wrapping and
-scrolling, keyboard and resize events, a text cursor, correct column widths for
-CJK, emoji and combining marks, a Unix backend and an in-memory backend for
-tests, and these widgets: `Block`, `Paragraph`, `Gauge`, `Tabs`, `Item_list`,
-`Table`, `Scrollbar`, `Sparkline` and `Clear`.
+scrolling, keyboard, mouse, paste and resize events, a text cursor, correct
+column widths for CJK, emoji and combining marks, a Unix backend and an
+in-memory backend for tests, and these widgets: `Block`, `Paragraph`,
+`Gauge`, `Tabs`, `Item_list`, `Table`, `Scrollbar`, `Sparkline`, `Bar_chart`,
+`Text_field` and `Clear`.
 
-Not there yet: mouse events, bracketed paste, charts (`BarChart`, `Chart`,
-`Canvas`) and Windows support.
+Not there yet: line charts and a drawing canvas (`Chart`, `Canvas`), and
+Windows support.
 
 ## Example
 
@@ -47,9 +48,10 @@ let () =
 Three larger examples live in [`examples/`](examples):
 [`hello.ml`](examples/hello.ml) splits the screen into a menu and a greeting,
 [`counter.ml`](examples/counter.ml) reacts to keys and resizes, and
-[`dashboard.ml`](examples/dashboard.ml) has three tabs with gauges, a chart, a
-table and a scrolling log. Run one with `dune exec examples/dashboard.exe`.
-This is `hello.exe`:
+[`dashboard.ml`](examples/dashboard.ml) has three tabs with gauges, charts, a
+filter you can type in, a table, a scrolling log and a quit dialog; it works
+with the keyboard and with the mouse. Run one with
+`dune exec examples/dashboard.exe`. This is `hello.exe`:
 
 ```
 ╭ Menu ──────────────╮╔ Hello ═══════════════════════════════════════╗
@@ -64,25 +66,27 @@ This is `hello.exe`:
 ╰────────────────────╯╚══════════════════════════════════════════════╝
 ```
 
-And the Packages tab of the dashboard, with the fifth row selected:
+And the Packages tab of the dashboard, after clicking its tab, typing `o` in the
+filter and pressing Down:
 
 ```
 ╭──────────────────────────────────────────────────────────────╮
 │ Overview │ Packages │ Logs                                   │
 ╰──────────────────────────────────────────────────────────────╯
+╭ Filter ──────────────────────────────────────────────────────╮
+│o                                                             │
+╰──────────────────────────────────────────────────────────────╯
 ╭ Packages ────────────────────────────────────────────────────╮
 │  Package                                 Version         Size│
-│  alcotest                                1.9.1         1.2 MB│
-│  camlembert                              0.1.0         340 KB│
-│  dune                                    3.24.2       28.4 MB│
+│▶ alcotest                                1.9.1         1.2 MB│
 │  ocaml-lsp-server                        1.27.0        9.8 MB│
-│▶ ocamlformat                             0.29.0       14.1 MB│
+│  ocamlformat                             0.29.0       14.1 MB│
 │  odoc                                    3.2.1         6.3 MB│
 │  qcheck-core                             0.91          820 KB│
-│  uucp                                    18.0.0       21.7 MB│
-│  uuseg                                   18.0.0        1.1 MB│
+│  utop                                    2.17.0        3.9 MB│
+│                                                              │
 ╰──────────────────────────────────────────────────────────────╯
-   Up, Down, Home, End move | Tab switches tab | q quits
+      Type to filter | Up, Down or click move | Esc quits
 ```
 
 ## How it works
@@ -108,7 +112,10 @@ one region, each in the share its layout constraint asks for, and
 
 An application reads `Event`s from `Camlembert_unix.Input` (`wait` for the next
 one, or `poll` with a timeout so the screen can refresh by itself) and draws a
-new frame after each one.
+new frame after each one. Mouse and paste events are asked for with
+`Unix_backend.with_terminal ~features:[ Mouse; Bracketed_paste ]`, and
+`Tabs.index_at`, `Item_list.index_at` and `Table.index_at` tell what is under a
+click. Text is typed into a `Line_edit`, drawn by a `Text_field`.
 
 Because the backend is the only part that talks to the outside world, widgets
 can be tested without a terminal:
@@ -129,10 +136,11 @@ Test_backend.to_lines test_backend (* one string per row of the screen *)
 | `Layout`, `Constraint` | Splitting a region with lengths, percentages, ratios, minimums, maximums and fill |
 | `Widget`, `Stateful_widget`, `Frame`, `Terminal`, `Backend` | Drawing frames, composing widgets and sending the diff to a backend |
 | `Test_backend` | An in-memory terminal to test widgets |
-| `Event`, `Input_parser` | Keyboard and resize events, and the parser that turns terminal bytes into them |
+| `Event`, `Input_parser` | Keyboard, mouse, paste and resize events, and the parser that turns terminal bytes into them |
 | `Alignment`, `Span`, `Line`, `Text`, `Wrap` | Styled text, and breaking long lines into rows |
-| `Block`, `Paragraph`, `Gauge`, `Tabs`, `Scrollbar`, `Sparkline`, `Clear` | Widgets that keep no state |
+| `Block`, `Paragraph`, `Gauge`, `Tabs`, `Scrollbar`, `Sparkline`, `Bar_chart`, `Clear` | Widgets that keep no state |
 | `Selection`, `Item_list`, `Table` | Widgets with a selected row that scrolls |
+| `Line_edit`, `Text_field` | A line of text being edited, and the box that shows it |
 | `Camlembert_unix` (`camlembert.unix`) | The Unix backend: `Unix_backend`, `Input`, `Ansi` and `Tty` |
 
 ## Repository layout

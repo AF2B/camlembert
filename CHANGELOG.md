@@ -95,5 +95,7 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   `Block` and `Paragraph`.
 - `examples/counter.ml`: an interactive counter that reacts to keys and
   resizes.
-- `examples/dashboard.ml`: a three-tab dashboard with gauges, a chart, a table
-  and a scrolling log, built by composing widgets with `Widget.split`.
+- `examples/dashboard.ml`: a three-tab dashboard with gauges, charts, a
+  filter to type in, a table, a scrolling log and a quit dialog, built by
+  composing widgets with `Widget.split`. It works with the keyboard and with
+  the mouse: click a tab or a row, turn the wheel, paste into the filter.
