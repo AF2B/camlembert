@@ -46,6 +46,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   selection in view, and `Selection` moves it. `Stateful_widget` and
   `Frame.render_stateful_widget` draw widgets that keep a state between
   frames.
+- `Table`: rows of cells lined up in columns whose widths come from layout
+  constraints, with an optional header that stays on top, column spacing and
+  the same selection, highlight and scrolling as `Item_list`.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
