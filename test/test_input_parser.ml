@@ -1,5 +1,6 @@
 module Event = Camlembert.Event
 module Input_parser = Camlembert.Input_parser
+module Position = Camlembert.Position
 
 let escape = "\027"
 let event_testable = Alcotest.testable Event.pp Event.equal
@@ -9,6 +10,21 @@ let held_shift = { Event.no_modifiers with shift = true }
 let key ?modifiers key_value = Event.key_press ?modifiers key_value
 let char ?modifiers text = key ?modifiers (Event.Char text)
 let paste text = escape ^ "[200~" ^ text ^ escape ^ "[201~"
+
+(* A mouse report in the extended format; terminals count from one. *)
+let report ?(released = false) ~code ~column ~row () =
+  Printf.sprintf
+    "%s[<%d;%d;%d%c"
+    escape
+    code
+    column
+    row
+    (if released then 'm' else 'M')
+;;
+
+let mouse ?(modifiers = Event.no_modifiers) action ~column ~row =
+  Event.Mouse { action; position = { Position.column; row }; modifiers }
+;;
 
 (* Every encoding below is complete on its own and cannot be mistaken for the
    start of another one. Each is paired with the event it stands for. *)
@@ -69,6 +85,48 @@ let encodings =
   ; escape ^ "[23~", key (Event.Function 11)
   ; escape ^ "[24~", key (Event.Function 12)
   ; escape ^ "[15;5~", key ~modifiers:held_control (Event.Function 5)
+  ; ( report ~code:0 ~column:10 ~row:5 ()
+    , mouse (Event.Press Event.Left_button) ~column:9 ~row:4 )
+  ; ( report ~released:true ~code:0 ~column:10 ~row:5 ()
+    , mouse (Event.Release Event.Left_button) ~column:9 ~row:4 )
+  ; ( report ~code:1 ~column:3 ~row:4 ()
+    , mouse (Event.Press Event.Middle_button) ~column:2 ~row:3 )
+  ; ( report ~code:2 ~column:3 ~row:4 ()
+    , mouse (Event.Press Event.Right_button) ~column:2 ~row:3 )
+  ; ( report ~code:32 ~column:11 ~row:5 ()
+    , mouse (Event.Drag Event.Left_button) ~column:10 ~row:4 )
+  ; ( report ~code:34 ~column:11 ~row:5 ()
+    , mouse (Event.Drag Event.Right_button) ~column:10 ~row:4 )
+  ; report ~code:64 ~column:1 ~row:1 (), mouse Event.Scroll_up ~column:0 ~row:0
+  ; ( report ~code:65 ~column:1 ~row:1 ()
+    , mouse Event.Scroll_down ~column:0 ~row:0 )
+  ; ( report ~code:66 ~column:1 ~row:1 ()
+    , mouse Event.Scroll_left ~column:0 ~row:0 )
+  ; ( report ~code:67 ~column:1 ~row:1 ()
+    , mouse Event.Scroll_right ~column:0 ~row:0 )
+  ; ( report ~code:4 ~column:1 ~row:1 ()
+    , mouse
+        (Event.Press Event.Left_button)
+        ~modifiers:held_shift
+        ~column:0
+        ~row:0 )
+  ; ( report ~code:8 ~column:1 ~row:1 ()
+    , mouse (Event.Press Event.Left_button) ~modifiers:held_alt ~column:0 ~row:0
+    )
+  ; ( report ~code:16 ~column:1 ~row:1 ()
+    , mouse
+        (Event.Press Event.Left_button)
+        ~modifiers:held_control
+        ~column:0
+        ~row:0 )
+  ; ( report ~code:28 ~column:1 ~row:1 ()
+    , mouse
+        (Event.Press Event.Left_button)
+        ~modifiers:{ Event.shift = true; control = true; alt = true }
+        ~column:0
+        ~row:0 )
+  ; ( report ~code:0 ~column:300 ~row:120 ()
+    , mouse (Event.Press Event.Left_button) ~column:299 ~row:119 )
   ; paste "hello", Event.Paste "hello"
   ; paste "", Event.Paste ""
   ; ( paste ("one\ntwo " ^ escape ^ "[A is not a key")
@@ -158,6 +216,38 @@ let test_character_split_across_reads () =
     "e acute"
     [ char "\u{E9}" ]
     second_events
+;;
+
+let test_a_mouse_report_arriving_in_pieces_is_put_together () =
+  let whole = report ~code:0 ~column:10 ~row:5 () in
+  let cut = 4 in
+  let parser, first_events =
+    Input_parser.feed Input_parser.empty (String.sub whole Int.zero cut)
+  in
+  Alcotest.(check (list event_testable)) "nothing yet" [] first_events;
+  let _, second_events =
+    Input_parser.feed parser (String.sub whole cut (String.length whole - cut))
+  in
+  Alcotest.(check (list event_testable))
+    "press"
+    [ mouse (Event.Press Event.Left_button) ~column:9 ~row:4 ]
+    second_events
+;;
+
+let test_mouse_reports_among_keys_keep_their_order () =
+  Alcotest.(check (list event_testable))
+    "key, mouse, key"
+    [ char "a"; mouse Event.Scroll_down ~column:0 ~row:0; char "b" ]
+    (events_of ("a" ^ report ~code:65 ~column:1 ~row:1 () ^ "b"))
+;;
+
+let test_moves_without_a_button_and_broken_reports_are_ignored () =
+  let motion_without_button = report ~code:35 ~column:5 ~row:5 () in
+  let missing_row = escape ^ "[<0;10M" in
+  Alcotest.(check (list event_testable))
+    "ignored"
+    [ char "a"; char "b" ]
+    (events_of ("a" ^ motion_without_button ^ missing_row ^ "b"))
 ;;
 
 let test_a_paste_arriving_in_pieces_is_delivered_once_it_is_complete () =
@@ -334,6 +424,14 @@ let () =
             `Quick
             test_character_split_across_reads
         ; Alcotest.test_case
+            "mouse report in pieces"
+            `Quick
+            test_a_mouse_report_arriving_in_pieces_is_put_together
+        ; Alcotest.test_case
+            "mouse reports among keys"
+            `Quick
+            test_mouse_reports_among_keys_keep_their_order
+        ; Alcotest.test_case
             "paste in pieces"
             `Quick
             test_a_paste_arriving_in_pieces_is_delivered_once_it_is_complete
@@ -355,6 +453,10 @@ let () =
             "unknown sequences"
             `Quick
             test_unknown_sequences_are_ignored
+        ; Alcotest.test_case
+            "moves without a button"
+            `Quick
+            test_moves_without_a_button_and_broken_reports_are_ignored
         ; Alcotest.test_case
             "invalid bytes"
             `Quick
