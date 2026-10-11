@@ -33,3 +33,10 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   inside it goes.
 - `Paragraph`: shows text line by line, aligned left, center or right, cut at
   the edges of its region and optionally framed by a `Block`.
+- `camlembert.unix`: a backend for real terminals. `Unix_backend.with_terminal`
+  runs a function with the terminal in raw mode on the alternate screen,
+  draws through ANSI escape sequences (moving the cursor and changing the
+  style only where needed) and puts the terminal back when it returns, raises
+  or is interrupted with Ctrl-C.
+- `examples/hello.ml`: a menu next to a greeting, built with `Layout`,
+  `Block` and `Paragraph`.
