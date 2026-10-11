@@ -1,3 +1,10 @@
 (tests
- (names test_rect test_color test_style test_grapheme test_cell test_buffer)
+ (names
+  test_rect
+  test_color
+  test_style
+  test_grapheme
+  test_cell
+  test_buffer
+  test_terminal)
  (libraries camlembert alcotest qcheck-core qcheck-alcotest))
