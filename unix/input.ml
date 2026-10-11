@@ -67,9 +67,9 @@ let is_readable source ~seconds =
 
 let read_available source =
   let bytes = Bytes.create read_chunk_size in
-  match Unix.read source.descriptor bytes 0 read_chunk_size with
+  match Unix.read source.descriptor bytes Int.zero read_chunk_size with
   | count when count = end_of_input -> raise End_of_file
-  | count -> feed source (Bytes.sub_string bytes 0 count)
+  | count -> feed source (Bytes.sub_string bytes Int.zero count)
   | exception Unix.Unix_error (Unix.EINTR, _, _) -> ()
 ;;
 
