@@ -53,6 +53,21 @@ let test_parts_sit_side_by_side () =
     (draw widget)
 ;;
 
+let test_spacing_leaves_a_gap_between_the_parts () =
+  let widget =
+    Widget.split
+      ~spacing:Int.one
+      ~direction:Layout.Horizontal
+      [ Constraint.Length left_share, filling "A"
+      ; Constraint.Fill Int.one, filling "B"
+      ]
+  in
+  Alcotest.(check (list string))
+    "gap"
+    (List.init screen_height (fun _ -> "AAA BBBB"))
+    (draw widget)
+;;
+
 let test_parts_are_stacked () =
   let widget =
     Widget.split
@@ -129,6 +144,10 @@ let () =
     [ ( "split"
       , [ Alcotest.test_case "side by side" `Quick test_parts_sit_side_by_side
         ; Alcotest.test_case "stacked" `Quick test_parts_are_stacked
+        ; Alcotest.test_case
+            "spacing"
+            `Quick
+            test_spacing_leaves_a_gap_between_the_parts
         ; Alcotest.test_case
             "regions"
             `Quick

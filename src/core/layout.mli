@@ -10,7 +10,13 @@
     leftovers go to the last item that receives a share.
 
     When the items ask for more than the region has, the last items shrink
-    first, down to nothing if needed. *)
+    first, down to nothing if needed.
+
+    Items can be kept apart by some empty cells of spacing. The spacing is
+    taken from the region first, so percentages, ratios and the leftover count
+    only what remains, and items that add up to a whole still fill the region.
+    When the spacing alone is longer than the region, every item shrinks to
+    nothing. *)
 
 type direction =
   | Horizontal (** Items sit side by side, from left to right. *)
@@ -18,26 +24,32 @@ type direction =
 
 (** Splits a region.
 
+    @param spacing Empty cells between two neighbouring items; none by default.
+      A negative spacing counts as none.
     @param direction Whether the items sit side by side or stacked.
     @param constraints What each item asks for, in order.
     @param area The region to split.
     @return One region per constraint, in the same order. *)
 val split
-  :  direction:direction
+  :  ?spacing:int
+  -> direction:direction
   -> constraints:Constraint.t list
   -> Rect.t
   -> Rect.t list
 
 (** Splits a region into side-by-side items.
 
+    @param spacing Empty columns between two neighbouring items; none by
+      default.
     @param constraints What each item asks for, from left to right.
     @param area The region to split.
     @return One region per constraint, in the same order. *)
-val horizontal : Constraint.t list -> Rect.t -> Rect.t list
+val horizontal : ?spacing:int -> Constraint.t list -> Rect.t -> Rect.t list
 
 (** Splits a region into stacked items.
 
+    @param spacing Empty rows between two neighbouring items; none by default.
     @param constraints What each item asks for, from top to bottom.
     @param area The region to split.
     @return One region per constraint, in the same order. *)
-val vertical : Constraint.t list -> Rect.t -> Rect.t list
+val vertical : ?spacing:int -> Constraint.t list -> Rect.t -> Rect.t list
