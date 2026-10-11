@@ -62,6 +62,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   deletion, moves, the usual readline shortcuts, pastes and scrolling that
   keeps the cursor in view. Characters are what the user sees as one, so wide
   characters and emoji sequences are edited as a whole.
+- `Text_field`: a box where the user types one line, drawn from a
+  `Line_edit`, with a placeholder while it is empty and a cursor position to
+  give to `Frame.set_cursor`.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,

@@ -24,5 +24,6 @@
   test_clear
   test_sparkline
   test_widget
-  test_line_edit)
+  test_line_edit
+  test_text_field)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
