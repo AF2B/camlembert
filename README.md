@@ -16,10 +16,9 @@ scrolling, keyboard, mouse, paste and resize events, a text cursor, correct
 column widths for CJK, emoji and combining marks, a Unix backend and an
 in-memory backend for tests, and these widgets: `Block`, `Paragraph`,
 `Gauge`, `Tabs`, `Item_list`, `Table`, `Scrollbar`, `Sparkline`, `Bar_chart`,
-`Text_field` and `Clear`.
+`Canvas`, `Chart`, `Text_field` and `Clear`.
 
-Not there yet: line charts and a drawing canvas (`Chart`, `Canvas`), and
-Windows support.
+Not there yet: Windows support.
 
 ## Example
 
@@ -48,9 +47,10 @@ let () =
 Three larger examples live in [`examples/`](examples):
 [`hello.ml`](examples/hello.ml) splits the screen into a menu and a greeting,
 [`counter.ml`](examples/counter.ml) reacts to keys and resizes, and
-[`dashboard.ml`](examples/dashboard.ml) has three tabs with gauges, charts, a
-filter you can type in, a table, a scrolling log and a quit dialog; it works
-with the keyboard and with the mouse. Run one with
+[`dashboard.ml`](examples/dashboard.ml) has four tabs with gauges, a line
+chart, a radar drawn on a canvas, a filter you can type in, a table, a
+scrolling log and a quit dialog; it works with the keyboard and with the
+mouse. Run one with
 `dune exec examples/dashboard.exe`. This is `hello.exe`:
 
 ```
@@ -66,24 +66,53 @@ with the keyboard and with the mouse. Run one with
 ╰────────────────────╯╚══════════════════════════════════════════════╝
 ```
 
-And the Packages tab of the dashboard, after clicking its tab, typing `o` in the
-filter and pressing Down:
+The Charts tab of the dashboard, where both series and the radar move by
+themselves:
 
 ```
 ╭──────────────────────────────────────────────────────────────╮
-│ Overview │ Packages │ Logs                                   │
+│ Overview │ Charts │ Packages │ Logs                          │
+╰──────────────────────────────────────────────────────────────╯
+╭ CPU and memory ────────────────────────╮╭ Radar ─────────────╮
+│%                                       ││                    │
+│100│                              CPU   ││                    │
+│   │⠉⠢⡀           ⡰⠉⠢⡀           ⡰Memory││    ⢀⠤⠒⠊⠉⠉N⠉⠑⠒⠤⡀    │
+│   │  ⢱         ⢀⠎   ⢱          ⡰⠁  ⢣   ││  ⣠⠞⠁  ⢀⣀⣀⣇⣀⡀  ⠈⠳⣄  │
+│   │  ⠈⡆        ⡸ ⢀⡠⠤⠔⠊⢹       ⢰⠁   ⠸⡀  ││ ⡼⠁  ⡤⠊⠉  ⡇ ⠉⠑⢤⢀⠤⣊⢧ │
+│   │   ⢸    ⢀⡠⠤⠔⠊⠉⠁   ⠘⢸      ⢀⠇     ⢣  ││⣸⠁ ⢀⡞  ⢀⠴⠒⡗⠦⡀⡠⡴⢷⡩⣔⡪⣇│
+│ 50│ ⢀⣀⡠⠔⠒⠊⠉⠁  ⡸       ⢸⡀     ⡸      ⠈⢆ ││⡇  ⢸  ⢰⠃  ⣇⣤⡾⡿⠛⠋⡏  ⢸│
+│   │⠊⠁   ⢇    ⡰⠁       ⠘⡄    ⢀⠇       ⠘⡄││⡏⠉⠉⢹⠉⠉⠹⡍⠉⠉⡏⠉⢩⠋⠉⠉⡏⠉⠉⢹│
+│   │     ⠘⡄  ⢰⠁         ⡇⡄  ⢀⠎      ⣀⠤⠤⠒││⢹⡀ ⠈⢧  ⠈⠲⠤⡧⠖⠁  ⡼⠡ ⢀⡏│
+│   │      ⠘⣄⡠⠃          ⡇⠘⠤⡠⠊⣀⣀⠤⠤⠒⠉⠉    ││ ⢳⡀  ⠓⢄⣀⡀ ⡇ ⣀⡠⠚  ⢀⡞ │
+│  0│                    ⣇⠤⠒⠒⠉           ││  ⠙⢦⡀  ⠈⠉⠉⡏⠉⠁  ⢀⡴⠋  │
+│   └────────────────────────────────────││    ⠈⠒⠤⢄⣀⣀⣇⣀⡠⠤⠒⠁    │
+│    -15 s          -7.5 s            now││                    │
+│                                    time││                    │
+╰────────────────────────────────────────╯╰────────────────────╯
+           Click a tab | Tab switches tab | Esc quits
+```
+
+And its Packages tab, after clicking it, typing `o` in the filter and
+pressing Down:
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│ Overview │ Charts │ Packages │ Logs                          │
 ╰──────────────────────────────────────────────────────────────╯
 ╭ Filter ──────────────────────────────────────────────────────╮
 │o                                                             │
 ╰──────────────────────────────────────────────────────────────╯
 ╭ Packages ────────────────────────────────────────────────────╮
 │  Package                                 Version         Size│
-│▶ alcotest                                1.9.1         1.2 MB│
-│  ocaml-lsp-server                        1.27.0        9.8 MB│
+│  alcotest                                1.9.1         1.2 MB│
+│▶ ocaml-lsp-server                        1.27.0        9.8 MB│
 │  ocamlformat                             0.29.0       14.1 MB│
 │  odoc                                    3.2.1         6.3 MB│
 │  qcheck-core                             0.91          820 KB│
 │  utop                                    2.17.0        3.9 MB│
+│                                                              │
+│                                                              │
+│                                                              │
 │                                                              │
 ╰──────────────────────────────────────────────────────────────╯
       Type to filter | Up, Down or click move | Esc quits
@@ -139,6 +168,7 @@ Test_backend.to_lines test_backend (* one string per row of the screen *)
 | `Event`, `Input_parser` | Keyboard, mouse, paste and resize events, and the parser that turns terminal bytes into them |
 | `Alignment`, `Span`, `Line`, `Text`, `Wrap` | Styled text, and breaking long lines into rows |
 | `Block`, `Paragraph`, `Gauge`, `Tabs`, `Scrollbar`, `Sparkline`, `Bar_chart`, `Clear` | Widgets that keep no state |
+| `Marker`, `Canvas`, `Chart` | Drawing with Braille patterns, half blocks and blocks: shapes and labels on a canvas, and datasets between two axes |
 | `Selection`, `Item_list`, `Table` | Widgets with a selected row that scrolls |
 | `Line_edit`, `Text_field` | A line of text being edited, and the box that shows it |
 | `Camlembert_unix` (`camlembert.unix`) | The Unix backend: `Unix_backend`, `Input`, `Ansi` and `Tty` |
