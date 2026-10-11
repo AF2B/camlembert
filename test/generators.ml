@@ -230,21 +230,48 @@ let block_border_type =
   QCheck2.Gen.oneof_list Block.[ Plain; Rounded; Double; Thick ]
 ;;
 
-(** The parameters of a random block: sides, border type and optional title. *)
-let block_parameters =
+let max_padding = 3
+
+let block_padding =
   QCheck2.Gen.(
-    triple block_sides block_border_type (option printable_ascii_text))
+    let+ left = int_range Int.zero max_padding
+    and+ right = int_range Int.zero max_padding
+    and+ top = int_range Int.zero max_padding
+    and+ bottom = int_range Int.zero max_padding in
+    { Block.left; right; top; bottom })
 ;;
 
-let block_of_parameters (borders, border_type, title_text) =
+(** The parameters of a random block. *)
+type block_parameters =
+  { borders : Block.side list
+  ; border_type : Block.border_type
+  ; title_text : string option
+  ; footer_text : string option
+  ; padding : Block.padding
+  }
+
+let block_parameters =
+  QCheck2.Gen.(
+    let+ borders = block_sides
+    and+ border_type = block_border_type
+    and+ title_text = option printable_ascii_text
+    and+ footer_text = option printable_ascii_text
+    and+ padding = block_padding in
+    { borders; border_type; title_text; footer_text; padding })
+;;
+
+let block_of_parameters parameters =
   Block.make
-    ~borders
-    ~border_type
-    ?title:(Option.map (fun text -> Line.of_string text) title_text)
+    ~borders:parameters.borders
+    ~border_type:parameters.border_type
+    ?title:(Option.map (fun text -> Line.of_string text) parameters.title_text)
+    ?footer:
+      (Option.map (fun text -> Line.of_string text) parameters.footer_text)
+    ~padding:parameters.padding
     ()
 ;;
 
-let print_block_parameters (borders, border_type, title_text) =
+let print_block_parameters parameters =
   let side_name = function
     | Block.Top -> "Top"
     | Block.Bottom -> "Bottom"
@@ -258,10 +285,15 @@ let print_block_parameters (borders, border_type, title_text) =
     | Block.Thick -> "Thick"
   in
   Printf.sprintf
-    "borders=[%s] border_type=%s title=%s"
-    (String.concat "; " (List.map side_name borders))
-    (border_type_name border_type)
-    (QCheck2.Print.(option string) title_text)
+    "borders=[%s] border_type=%s title=%s footer=%s padding=(%d, %d, %d, %d)"
+    (String.concat "; " (List.map side_name parameters.borders))
+    (border_type_name parameters.border_type)
+    (QCheck2.Print.(option string) parameters.title_text)
+    (QCheck2.Print.(option string) parameters.footer_text)
+    parameters.padding.Block.left
+    parameters.padding.Block.right
+    parameters.padding.Block.top
+    parameters.padding.Block.bottom
 ;;
 
 let ratio = QCheck2.Gen.float_range 0.0 1.0

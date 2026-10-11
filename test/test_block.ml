@@ -15,7 +15,15 @@ let box_height = 3
 let title_box_width = 10
 let thin_box_width = 6
 let border_thickness = 1
+let padding_left = 1
+let padding_right = 2
+let padding_top = 3
+let padding_bottom = 4
+let padded_size = 14
+let uniform_padding_size = 2
+let negative_size = -1
 let title_text = "Hi"
+let footer_text = "Ok"
 let long_title_text = "abcdefgh"
 let blank_character = ' '
 let area ~width ~height = Rect.make ~column:origin ~row:origin ~width ~height
@@ -144,6 +152,49 @@ let test_title_without_top_border_takes_the_first_row () =
     (lines_of block ~width:box_width ~height:(pred box_height))
 ;;
 
+let test_footer_alignments () =
+  let lines_with alignment =
+    List.nth
+      (lines_of
+         (Block.make
+            ~borders:Block.all_sides
+            ~footer:(Line.of_string title_text)
+            ~footer_alignment:alignment
+            ())
+         ~width:title_box_width
+         ~height:box_height)
+      (pred box_height)
+  in
+  Alcotest.(check string) "left" "└Hi──────┘" (lines_with Alignment.Left);
+  Alcotest.(check string) "center" "└───Hi───┘" (lines_with Alignment.Center);
+  Alcotest.(check string) "right" "└──────Hi┘" (lines_with Alignment.Right)
+;;
+
+let test_footer_without_bottom_border_takes_the_last_row () =
+  let block =
+    Block.make ~borders:[ Block.Left ] ~footer:(Line.of_string title_text) ()
+  in
+  Alcotest.(check (list string))
+    "footer row"
+    [ "│     "; "│Hi   " ]
+    (lines_of block ~width:box_width ~height:(pred box_height))
+;;
+
+let test_title_and_footer_together () =
+  let block =
+    Block.make
+      ~borders:Block.all_sides
+      ~title:(Line.of_string title_text)
+      ~footer:(Line.of_string footer_text)
+      ~footer_alignment:Alignment.Right
+      ()
+  in
+  Alcotest.(check (list string))
+    "both"
+    [ "┌Hi──┐"; "│    │"; "└──Ok┘" ]
+    (lines_of block ~width:box_width ~height:box_height)
+;;
+
 let test_inner_area_removes_the_borders () =
   let region = area ~width:box_width ~height:box_height in
   let inner_of borders = Block.inner (Block.make ~borders ()) region in
@@ -185,6 +236,84 @@ let test_title_reserves_the_top_row () =
        ~left:Int.zero
        ~right:Int.zero)
     (Block.inner block region)
+;;
+
+let test_footer_reserves_the_bottom_row () =
+  let region = area ~width:box_width ~height:box_height in
+  let block = Block.make ~footer:(Line.of_string footer_text) () in
+  Alcotest.check
+    rect_testable
+    "bottom row reserved"
+    (Rect.shrink
+       region
+       ~top:Int.zero
+       ~bottom:border_thickness
+       ~left:Int.zero
+       ~right:Int.zero)
+    (Block.inner block region)
+;;
+
+let test_padding_keeps_the_content_away_from_the_borders () =
+  let region = area ~width:padded_size ~height:padded_size in
+  let padding =
+    { Block.left = padding_left
+    ; right = padding_right
+    ; top = padding_top
+    ; bottom = padding_bottom
+    }
+  in
+  Alcotest.check
+    rect_testable
+    "with borders"
+    (Rect.shrink
+       region
+       ~top:(border_thickness + padding_top)
+       ~bottom:(border_thickness + padding_bottom)
+       ~left:(border_thickness + padding_left)
+       ~right:(border_thickness + padding_right))
+    (Block.inner (Block.make ~borders:Block.all_sides ~padding ()) region);
+  Alcotest.check
+    rect_testable
+    "without borders"
+    (Rect.shrink
+       region
+       ~top:padding_top
+       ~bottom:padding_bottom
+       ~left:padding_left
+       ~right:padding_right)
+    (Block.inner (Block.make ~padding ()) region)
+;;
+
+let test_uniform_padding_is_the_same_on_every_side () =
+  let region = area ~width:padded_size ~height:padded_size in
+  Alcotest.check
+    rect_testable
+    "uniform"
+    (Rect.shrink
+       region
+       ~top:uniform_padding_size
+       ~bottom:uniform_padding_size
+       ~left:uniform_padding_size
+       ~right:uniform_padding_size)
+    (Block.inner
+       (Block.make ~padding:(Block.uniform_padding uniform_padding_size) ())
+       region);
+  Alcotest.check
+    rect_testable
+    "none"
+    region
+    (Block.inner (Block.make ~padding:Block.no_padding ()) region)
+;;
+
+let test_padding_cannot_be_negative () =
+  Alcotest.check_raises
+    "negative"
+    (Invalid_argument "Block.make: padding cannot be negative")
+    (fun () ->
+       ignore
+         (Block.make
+            ~padding:{ Block.no_padding with Block.left = negative_size }
+            ()))
 ;;
 
 let test_styles_apply_to_the_right_cells () =
@@ -293,6 +422,17 @@ let () =
             `Quick
             test_title_without_top_border_takes_the_first_row
         ] )
+    ; ( "footer"
+      , [ Alcotest.test_case "alignments" `Quick test_footer_alignments
+        ; Alcotest.test_case
+            "without bottom border"
+            `Quick
+            test_footer_without_bottom_border_takes_the_last_row
+        ; Alcotest.test_case
+            "with a title"
+            `Quick
+            test_title_and_footer_together
+        ] )
     ; ( "inner"
       , [ Alcotest.test_case
             "removes borders"
@@ -302,6 +442,22 @@ let () =
             "reserves the title row"
             `Quick
             test_title_reserves_the_top_row
+        ; Alcotest.test_case
+            "reserves the footer row"
+            `Quick
+            test_footer_reserves_the_bottom_row
+        ; Alcotest.test_case
+            "padding"
+            `Quick
+            test_padding_keeps_the_content_away_from_the_borders
+        ; Alcotest.test_case
+            "uniform padding"
+            `Quick
+            test_uniform_padding_is_the_same_on_every_side
+        ; Alcotest.test_case
+            "negative padding"
+            `Quick
+            test_padding_cannot_be_negative
         ] )
     ; ( "styles and clipping"
       , [ Alcotest.test_case
