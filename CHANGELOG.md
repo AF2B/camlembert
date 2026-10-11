@@ -26,3 +26,5 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   a real one.
 - `Layout` and `Constraint`: split a region into rows or columns using fixed
   lengths, percentages, ratios, minimum and maximum sizes, and weighted fill.
+- `Alignment`, `Span`, `Line` and `Text`: styled text made of spans and lines,
+  with left, center and right alignment.
