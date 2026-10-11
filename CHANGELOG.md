@@ -58,6 +58,10 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   widgets.
 - `Sparkline`: a small chart of bars, up to the height of its region, in
   steps of an eighth of a cell.
+- `Line_edit`: a single line of text being edited, with a cursor, insertion,
+  deletion, moves, the usual readline shortcuts, pastes and scrolling that
+  keeps the cursor in view. Characters are what the user sees as one, so wide
+  characters and emoji sequences are edited as a whole.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
