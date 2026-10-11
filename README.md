@@ -225,7 +225,12 @@ Then:
 dune build @all @fmt   # build, with strict warnings, and check the formatting
 dune test              # unit tests (Alcotest) and property-based tests (QCheck)
 dune fmt               # format the code
+dune build @doc        # API docs, in _build/default/_doc/_html
 ```
+
+The documentation build prints one warning for every `@raise` of a Stdlib or
+Unix exception, because those libraries are not part of the generated pages.
+Those warnings are harmless; any other one is a broken reference.
 
 Branches follow `<type>/<short-description>` and commits follow
 [Conventional Commits](https://www.conventionalcommits.org/), in English.

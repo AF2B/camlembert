@@ -4,8 +4,9 @@
     that the axes leave free. The y axis stands on the left, with its labels
     on its left, and the x axis stands at the bottom, with its labels under it.
     The labels are given by the application and spread evenly along each axis,
-    the first one at the start, the last one at the end. Whatever lies outside
-    of the bounds of the axes is left out. *)
+    the first one at the start, the last one at the end. They are neither cut
+    nor left out to keep them apart, so a narrow chart needs few and short
+    labels. Whatever lies outside of the bounds of the axes is left out. *)
 
 (** How a dataset is drawn. *)
 type graph_type =
