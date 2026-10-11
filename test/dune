@@ -12,5 +12,6 @@
   test_block
   test_paragraph
   test_ansi
-  test_input_parser)
+  test_input_parser
+  test_input)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
