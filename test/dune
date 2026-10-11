@@ -28,5 +28,6 @@
   test_text_field
   test_hit_testing
   test_eighths
-  test_bar_chart)
+  test_bar_chart
+  test_marker)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
