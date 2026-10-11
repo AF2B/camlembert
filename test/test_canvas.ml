@@ -325,6 +325,23 @@ let test_a_block_frames_the_canvas () =
     (List.nth lines (pred (pred framed_size)))
 ;;
 
+let test_a_circle_larger_than_any_terminal_does_not_take_forever () =
+  let canvas =
+    blocks
+      [ Canvas.Circle
+          { x = unit_coordinate
+          ; y = unit_coordinate
+          ; radius = far_beyond_the_bounds *. far_beyond_the_bounds
+          ; style = Style.default
+          }
+      ]
+  in
+  Alcotest.(check (list string))
+    "nothing of it reaches the canvas"
+    (List.init square_size (fun _ -> String.make square_size ' '))
+    (square_lines canvas)
+;;
+
 let test_invalid_bounds_are_rejected () =
   let rejects message ~x_bounds ~y_bounds =
     Alcotest.check_raises
@@ -513,6 +530,10 @@ let () =
             `Quick
             test_labels_are_written_over_the_shapes
         ; Alcotest.test_case "block" `Quick test_a_block_frames_the_canvas
+        ; Alcotest.test_case
+            "huge circle"
+            `Quick
+            test_a_circle_larger_than_any_terminal_does_not_take_forever
         ; Alcotest.test_case
             "invalid bounds"
             `Quick
