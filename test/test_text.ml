@@ -174,6 +174,26 @@ let test_the_alignment_of_the_line_wins_over_the_default () =
     (render_aligned line ~alignment:Alignment.Left)
 ;;
 
+let test_patch_style_goes_under_the_style_of_the_spans () =
+  let line =
+    Line.make
+      ~alignment:Alignment.Right
+      [ Span.make "plain"; Span.make ~style:blue_background "marked" ]
+  in
+  let patched = Line.patch_style line red_style in
+  let styles =
+    List.map (fun (span : Span.t) -> span.style) patched.Line.spans
+  in
+  Alcotest.(check bool)
+    "base style under every span"
+    true
+    (styles = [ red_style; Style.patch red_style blue_background ]);
+  Alcotest.(check bool)
+    "alignment kept"
+    true
+    (patched.Line.alignment = Some Alignment.Right)
+;;
+
 let test_text_has_one_line_per_line_feed () =
   let expected_lines = [ "first"; "second"; "third" ] in
   Alcotest.(check int)
@@ -244,6 +264,10 @@ let () =
             "line alignment wins"
             `Quick
             test_the_alignment_of_the_line_wins_over_the_default
+        ; Alcotest.test_case
+            "patch_style"
+            `Quick
+            test_patch_style_goes_under_the_style_of_the_spans
         ; Alcotest.test_case
             "render clipping"
             `Quick

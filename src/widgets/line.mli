@@ -56,3 +56,12 @@ val render_aligned
   -> row:int
   -> width:int
   -> unit
+
+(** Layers a style under the style of every span of a line.
+
+    The style of each span wins where both set the same thing.
+
+    @param line The line to restyle.
+    @param style The style to put under the spans.
+    @return The restyled line, with the same alignment. *)
+val patch_style : t -> Style.t -> t
