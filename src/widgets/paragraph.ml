@@ -39,18 +39,13 @@ let draw_block paragraph area buffer =
 
 let draw_line ~paragraph ~buffer ~text_area ~row line =
   let { Rect.column; width; _ } = text_area in
-  let alignment =
-    Option.value line.Line.alignment ~default:paragraph.alignment
-  in
-  let offset =
-    Alignment.offset alignment ~available:width ~content:(Line.width line)
-  in
-  Line.render
+  Line.render_aligned
     line
     buffer
-    ~column:(column + offset)
+    ~alignment:paragraph.alignment
+    ~column
     ~row
-    ~max_width:(width - offset)
+    ~width
 ;;
 
 let widget paragraph area buffer =
