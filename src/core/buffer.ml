@@ -78,6 +78,12 @@ let set_style buffer region style =
        set_cell buffer ~column ~row styled)
 ;;
 
+let clear buffer region =
+  Rect.iter_positions
+    (Rect.intersection region buffer.area)
+    (fun ~column ~row -> set_cell buffer ~column ~row Cell.empty)
+;;
+
 let reset buffer =
   Array.fill buffer.cells Int.zero (Array.length buffer.cells) Cell.empty
 ;;

@@ -51,6 +51,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   the same selection, highlight and scrolling as `Item_list`.
 - `Scrollbar`: a track and a thumb along any edge of a region, showing how
   far a content is scrolled.
+- `Clear` and `Buffer.clear`: blank a region, to draw a popup over other
+  widgets.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,

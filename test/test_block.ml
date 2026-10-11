@@ -8,6 +8,7 @@ module Rect = Camlembert.Rect
 module Style = Camlembert.Style
 
 let origin = 0
+let oversize_factor = 2
 let box_width = 6
 let box_height = 3
 let title_box_width = 10
@@ -222,7 +223,11 @@ let test_empty_area_draws_nothing () =
 
 let test_block_larger_than_the_buffer_is_clipped () =
   let buffer = Buffer.create (area ~width:box_width ~height:box_height) in
-  let oversized = area ~width:(2 * box_width) ~height:(2 * box_height) in
+  let oversized =
+    area
+      ~width:(oversize_factor * box_width)
+      ~height:(oversize_factor * box_height)
+  in
   Block.widget (titled title_text) oversized buffer;
   Alcotest.(check string)
     "first row"

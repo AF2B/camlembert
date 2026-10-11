@@ -114,7 +114,8 @@ let test_min_items_grow_when_there_is_no_fill () =
   let sidebar = 20 in
   let panel_minimum = 10 in
   let region_width = 100 in
-  let grown_panel = (region_width - sidebar) / 2 in
+  let growing_panels = 2 in
+  let grown_panel = (region_width - sidebar) / growing_panels in
   Alcotest.(check (list int))
     "widths"
     [ sidebar; grown_panel; grown_panel ]
