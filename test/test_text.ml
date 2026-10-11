@@ -138,6 +138,42 @@ let test_render_cuts_the_line_at_max_width () =
   Alcotest.(check string) "clipped" (padded "abc") (first_row buffer)
 ;;
 
+let render_aligned line ~alignment =
+  let buffer = Buffer.create canvas in
+  Line.render_aligned
+    line
+    buffer
+    ~alignment
+    ~column:origin
+    ~row:origin
+    ~width:canvas_width;
+  first_row buffer
+;;
+
+let test_render_aligned_places_the_line_in_its_room () =
+  let line = Line.of_string ascii_greeting in
+  Alcotest.(check string)
+    "left"
+    "hello   "
+    (render_aligned line ~alignment:Alignment.Left);
+  Alcotest.(check string)
+    "center"
+    " hello  "
+    (render_aligned line ~alignment:Alignment.Center);
+  Alcotest.(check string)
+    "right"
+    "   hello"
+    (render_aligned line ~alignment:Alignment.Right)
+;;
+
+let test_the_alignment_of_the_line_wins_over_the_default () =
+  let line = Line.of_string ~alignment:Alignment.Right ascii_greeting in
+  Alcotest.(check string)
+    "right"
+    "   hello"
+    (render_aligned line ~alignment:Alignment.Left)
+;;
+
 let test_text_has_one_line_per_line_feed () =
   let expected_lines = [ "first"; "second"; "third" ] in
   Alcotest.(check int)
@@ -200,6 +236,14 @@ let () =
             "render spans"
             `Quick
             test_render_draws_spans_one_after_another
+        ; Alcotest.test_case
+            "render aligned"
+            `Quick
+            test_render_aligned_places_the_line_in_its_room
+        ; Alcotest.test_case
+            "line alignment wins"
+            `Quick
+            test_the_alignment_of_the_line_wins_over_the_default
         ; Alcotest.test_case
             "render clipping"
             `Quick

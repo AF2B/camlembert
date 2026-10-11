@@ -26,3 +26,13 @@ let render line buffer ~column ~row ~max_width =
   in
   ignore (List.fold_left draw_span Int.zero line.spans)
 ;;
+
+let content_width = width
+
+let render_aligned line buffer ~alignment ~column ~row ~width =
+  let alignment = Option.value line.alignment ~default:alignment in
+  let offset =
+    Alignment.offset alignment ~available:width ~content:(content_width line)
+  in
+  render line buffer ~column:(column + offset) ~row ~max_width:(width - offset)
+;;

@@ -37,3 +37,22 @@ val width : t -> int
     @param row Row where the line goes.
     @param max_width Most columns the line may take; the rest is cut. *)
 val render : t -> Buffer.t -> column:int -> row:int -> max_width:int -> unit
+
+(** Draws a line aligned inside a room, on one row.
+
+    The alignment of the line wins over the default one, if it has one.
+
+    @param line The line to draw.
+    @param buffer The buffer to draw into.
+    @param alignment How the line sits in the room unless it sets its own.
+    @param column First column of the room.
+    @param row Row where the line goes.
+    @param width Columns of the room; what does not fit is cut. *)
+val render_aligned
+  :  t
+  -> Buffer.t
+  -> alignment:Alignment.t
+  -> column:int
+  -> row:int
+  -> width:int
+  -> unit
