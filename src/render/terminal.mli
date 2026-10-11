@@ -21,7 +21,8 @@ val area : t -> Rect.t
 (** Composes one frame and shows it.
 
     When the backend was resized since the last draw, the screen is cleared and
-    the whole frame is sent again.
+    the whole frame is sent again. The text cursor is shown only if the frame
+    asks for it with {!Frame.set_cursor}.
 
     @param terminal The terminal to draw on.
     @param render_frame Draws the frame, usually by rendering widgets. *)

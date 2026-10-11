@@ -7,7 +7,7 @@ type t
     The terminal calls this for you; draw callbacks receive a ready frame.
 
     @param buffer The buffer the frame draws into.
-    @return The new frame. *)
+    @return The new frame, with the text cursor hidden. *)
 val create : Buffer.t -> t
 
 (** The whole region the frame can draw in.
@@ -28,3 +28,17 @@ val buffer : t -> Buffer.t
     @param widget The widget to draw.
     @param area The region the widget may use. *)
 val render_widget : t -> Widget.t -> area:Rect.t -> unit
+
+(** Asks for the text cursor to be shown at a position once the frame is drawn.
+
+    The cursor is hidden unless every frame asks for it.
+
+    @param frame The frame being composed.
+    @param position The cell the cursor goes to. *)
+val set_cursor : t -> Position.t -> unit
+
+(** The position the frame asked the cursor to be shown at.
+
+    @param frame The frame to inspect.
+    @return The position, or [None] when the cursor is to be hidden. *)
+val cursor : t -> Position.t option

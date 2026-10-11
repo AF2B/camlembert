@@ -71,6 +71,13 @@ let move_cursor ~column ~row =
   sequence ~parameters:[ succ row; succ column ] cursor_position_final
 ;;
 
+(* The cursor is moved before it is shown, so it never flashes elsewhere. *)
+let encode_cursor = function
+  | Some { Camlembert.Position.column; row } ->
+    move_cursor ~column ~row ^ show_cursor
+  | None -> hide_cursor
+;;
+
 let modifier_code = function
   | Style.Bold -> bold_code
   | Style.Dim -> dim_code

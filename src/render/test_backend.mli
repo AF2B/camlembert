@@ -35,6 +35,12 @@ val to_lines : t -> string list
     @return The total count of drawn cells. *)
 val drawn_cells : t -> int
 
+(** Where the fake terminal shows its text cursor.
+
+    @param test_backend The fake terminal to inspect.
+    @return The position of the cursor, or [None] when it is hidden. *)
+val cursor : t -> Position.t option
+
 (** Simulates the user resizing the terminal window; the screen goes blank.
 
     @param test_backend The fake terminal to resize.
