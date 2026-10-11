@@ -53,6 +53,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   far a content is scrolled.
 - `Clear` and `Buffer.clear`: blank a region, to draw a popup over other
   widgets.
+- `Sparkline`: a small chart of bars, up to the height of its region, in
+  steps of an eighth of a cell.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
