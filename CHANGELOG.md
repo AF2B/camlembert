@@ -67,6 +67,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   give to `Frame.set_cursor`.
 - `Tabs.index_at`, `Item_list.index_at` and `Table.index_at` tell which title,
   item or row is under a cell, as drawn, so a mouse click can select it.
+- `Bar_chart`: vertical bars with a label under each one and the value
+  written inside the bar when it fits, in steps of an eighth of a cell.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,

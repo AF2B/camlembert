@@ -26,5 +26,7 @@
   test_widget
   test_line_edit
   test_text_field
-  test_hit_testing)
+  test_hit_testing
+  test_eighths
+  test_bar_chart)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
