@@ -24,3 +24,5 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - `Backend`: the record of four functions that connects the library to a
   terminal, and `Test_backend`, an in-memory terminal to test widgets without
   a real one.
+- `Layout` and `Constraint`: split a region into rows or columns using fixed
+  lengths, percentages, ratios, minimum and maximum sizes, and weighted fill.
