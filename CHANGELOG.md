@@ -28,3 +28,6 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   lengths, percentages, ratios, minimum and maximum sizes, and weighted fill.
 - `Alignment`, `Span`, `Line` and `Text`: styled text made of spans and lines,
   with left, center and right alignment.
+- `Block`: a frame with optional borders (plain, rounded, double or thick), a
+  title and a background style, and `Block.inner` to find where the content
+  inside it goes.
