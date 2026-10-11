@@ -9,5 +9,6 @@
   test_terminal
   test_layout
   test_text
-  test_block)
+  test_block
+  test_paragraph)
  (libraries camlembert alcotest qcheck-core qcheck-alcotest))

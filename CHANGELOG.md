@@ -31,3 +31,5 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - `Block`: a frame with optional borders (plain, rounded, double or thick), a
   title and a background style, and `Block.inner` to find where the content
   inside it goes.
+- `Paragraph`: shows text line by line, aligned left, center or right, cut at
+  the edges of its region and optionally framed by a `Block`.

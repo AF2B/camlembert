@@ -1,5 +1,6 @@
 (** Random value generators shared by the property-based tests. *)
 
+module Alignment = Camlembert.Alignment
 module Block = Camlembert.Block
 module Color = Camlembert.Color
 module Constraint = Camlembert.Constraint
@@ -184,6 +185,19 @@ let print_constraint = function
 ;;
 
 let print_constraints = QCheck2.Print.list print_constraint
+let max_line_count = 4
+let alignment = QCheck2.Gen.oneof_list Alignment.[ Left; Center; Right ]
+
+let text_lines =
+  QCheck2.Gen.(
+    list_size (int_range Int.zero max_line_count) printable_ascii_text)
+;;
+
+let print_alignment = function
+  | Alignment.Left -> "Left"
+  | Alignment.Center -> "Center"
+  | Alignment.Right -> "Right"
+;;
 
 let block_sides =
   QCheck2.Gen.(
