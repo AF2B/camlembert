@@ -15,8 +15,8 @@ Available today: layout by constraints, styled text with wrapping and
 scrolling, keyboard, mouse, paste and resize events, a text cursor, correct
 column widths for CJK, emoji and combining marks, a Unix backend and an
 in-memory backend for tests, and these widgets: `Block`, `Paragraph`,
-`Gauge`, `Tabs`, `Item_list`, `Table`, `Scrollbar`, `Sparkline`, `Bar_chart`,
-`Canvas`, `Chart`, `Text_field` and `Clear`.
+`Gauge`, `Line_gauge`, `Tabs`, `Item_list`, `Table`, `Scrollbar`, `Sparkline`,
+`Bar_chart`, `Canvas`, `Chart`, `Text_field` and `Clear`.
 
 Not there yet: Windows support.
 
@@ -66,29 +66,54 @@ mouse. Run one with
 ╰────────────────────╯╚══════════════════════════════════════════════╝
 ```
 
-The Charts tab of the dashboard, where both series and the radar move by
-themselves:
+The Overview tab of the dashboard, with its gauges, a line gauge and bars that
+move by themselves:
 
 ```
 ╭──────────────────────────────────────────────────────────────╮
 │ Overview │ Charts │ Packages │ Logs                          │
 ╰──────────────────────────────────────────────────────────────╯
-╭ CPU and memory ────────────────────────╮╭ Radar ─────────────╮
-│%                                       ││                    │
-│100│                              CPU   ││                    │
-│   │⠉⠢⡀           ⡰⠉⠢⡀           ⡰Memory││    ⢀⠤⠒⠊⠉⠉N⠉⠑⠒⠤⡀    │
-│   │  ⢱         ⢀⠎   ⢱          ⡰⠁  ⢣   ││  ⣠⠞⠁  ⢀⣀⣀⣇⣀⡀  ⠈⠳⣄  │
-│   │  ⠈⡆        ⡸ ⢀⡠⠤⠔⠊⢹       ⢰⠁   ⠸⡀  ││ ⡼⠁  ⡤⠊⠉  ⡇ ⠉⠑⢤⢀⠤⣊⢧ │
-│   │   ⢸    ⢀⡠⠤⠔⠊⠉⠁   ⠘⢸      ⢀⠇     ⢣  ││⣸⠁ ⢀⡞  ⢀⠴⠒⡗⠦⡀⡠⡴⢷⡩⣔⡪⣇│
-│ 50│ ⢀⣀⡠⠔⠒⠊⠉⠁  ⡸       ⢸⡀     ⡸      ⠈⢆ ││⡇  ⢸  ⢰⠃  ⣇⣤⡾⡿⠛⠋⡏  ⢸│
-│   │⠊⠁   ⢇    ⡰⠁       ⠘⡄    ⢀⠇       ⠘⡄││⡏⠉⠉⢹⠉⠉⠹⡍⠉⠉⡏⠉⢩⠋⠉⠉⡏⠉⠉⢹│
-│   │     ⠘⡄  ⢰⠁         ⡇⡄  ⢀⠎      ⣀⠤⠤⠒││⢹⡀ ⠈⢧  ⠈⠲⠤⡧⠖⠁  ⡼⠡ ⢀⡏│
-│   │      ⠘⣄⡠⠃          ⡇⠘⠤⡠⠊⣀⣀⠤⠤⠒⠉⠉    ││ ⢳⡀  ⠓⢄⣀⡀ ⡇ ⣀⡠⠚  ⢀⡞ │
-│  0│                    ⣇⠤⠒⠒⠉           ││  ⠙⢦⡀  ⠈⠉⠉⡏⠉⠁  ⢀⡴⠋  │
-│   └────────────────────────────────────││    ⠈⠒⠤⢄⣀⣀⣇⣀⡠⠤⠒⠁    │
-│    -15 s          -7.5 s            now││                    │
-│                                    time││                    │
-╰────────────────────────────────────────╯╰────────────────────╯
+╭ CPU ───────────────────────────╮╭ CPU history ───────────────╮
+│            ▌ 39%               ││                  ▁▃▄▄▃▁    │
+╰────────────────────────────────╯│▂               ▂▆██████▃   │
+╭ Memory ────────────────────────╮│█▆▃           ▃▇█████████▇▄ │
+│       ▋      24%               ││███▇▄       ▄▇██████████████│
+╰────────────────────────────────╯│██████▆▅▄▅▆█████████████████│
+╭ Disk ──────────────────────────╮╰────────────────────────────╯
+│              72%               │╭ Requests per hour ─────────╮
+╰────────────────────────────────╯│                    ▁▁▁     │
+╭ Network ───────────────────────╮│    ▄▄▄                     │
+│44% ━━━━━━━━━━━━────────────────││                ▅▅▅         │
+╰────────────────────────────────╯│▇▇▇         ▁▁▁             │
+                                  │                            │
+                                  │32  49  66  23  40  57      │
+                                  │h0  h1  h2  h3  h4  h5      │
+                                  ╰────────────────────────────╯
+           Click a tab | Tab switches tab | Esc quits
+```
+
+Its Charts tab, where both series and the radar move by themselves:
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│ Overview │ Charts │ Packages │ Logs                          │
+╰──────────────────────────────────────────────────────────────╯
+╭ CPU and memory ────────────────────────╮ ╭ Radar ────────────╮
+│%                                       │ │                   │
+│100│                              CPU   │ │                   │
+│   │⠉⠢⡀           ⡰⠉⠢⡀           ⡰Memory│ │    ⢀⣠⠤⠖⠒N⠒⠒⠤⣄⡀    │
+│   │  ⢱         ⢀⠎   ⢱          ⡰⠁  ⢣   │ │  ⢠⠖⠉   ⣀⣸⣀   ⠉⠢⣄  │
+│   │  ⠈⡆        ⡸ ⢀⡠⠤⠔⠊⢹       ⢰⠁   ⠸⡀  │ │ ⡴⠁ ⢀⡴⠚⠉ ⢸ ⠉⠓⢦⣀⡠⢊⣦ │
+│   │   ⢸    ⢀⡠⠤⠔⠊⠉⠁   ⠘⢸      ⢀⠇     ⢣  │ │⣰⠁ ⢠⠎  ⣠⠴⢺⠦⣄⢀⢔⢵⡮⣕⡪⡇│
+│ 50│ ⢀⣀⡠⠔⠒⠊⠉⠁  ⡸       ⢸⡀     ⡸      ⠈⢆ │ │⡇  ⡜  ⡸⠁ ⢸⣠⣾⢿⠟⠋⢫  ⢸│
+│   │⠊⠁   ⢇    ⡰⠁       ⠘⡄    ⢀⠇       ⠘⡄│ │⡏⠉⠉⢫⠉⠉⢹⡉⠉⢹⠉⢉⡏⠉⠉⡝⠉⠉⢹│
+│   │     ⠘⡄  ⢰⠁         ⡇⡄  ⢀⠎      ⣀⠤⠤⠒│ │⠹⡀ ⠘⢆  ⠙⠲⢼⠖⠋  ⡰⠣ ⢀⡇│
+│   │      ⠘⣄⡠⠃          ⡇⠘⠤⡠⠊⣀⣀⠤⠤⠒⠉⠉    │ │ ⠳⡀ ⠈⠳⢤⣀ ⢸ ⣀⡤⠞⠁ ⢀⠞ │
+│  0│                    ⣇⠤⠒⠒⠉           │ │  ⠘⠦⣀   ⠉⢹⠉   ⣀⠔⠋  │
+│   └────────────────────────────────────│ │    ⠈⠙⠒⠦⠤⠼⠤⠤⠒⠋⠁    │
+│    -15 s          -7.5 s            now│ │                   │
+│                                    time│ │                   │
+╰────────────────────────────────────────╯ ╰───────────────────╯
            Click a tab | Tab switches tab | Esc quits
 ```
 
@@ -114,7 +139,7 @@ pressing Down:
 │                                                              │
 │                                                              │
 │                                                              │
-╰──────────────────────────────────────────────────────────────╯
+╰───────────────────────────────────────────────────── 6 of 10 ╯
       Type to filter | Up, Down or click move | Esc quits
 ```
 
@@ -167,7 +192,7 @@ Test_backend.to_lines test_backend (* one string per row of the screen *)
 | `Test_backend` | An in-memory terminal to test widgets |
 | `Event`, `Input_parser` | Keyboard, mouse, paste and resize events, and the parser that turns terminal bytes into them |
 | `Alignment`, `Span`, `Line`, `Text`, `Wrap` | Styled text, and breaking long lines into rows |
-| `Block`, `Paragraph`, `Gauge`, `Tabs`, `Scrollbar`, `Sparkline`, `Bar_chart`, `Clear` | Widgets that keep no state |
+| `Block`, `Paragraph`, `Gauge`, `Line_gauge`, `Tabs`, `Scrollbar`, `Sparkline`, `Bar_chart`, `Clear` | Widgets that keep no state |
 | `Marker`, `Canvas`, `Chart` | Drawing with Braille patterns, half blocks and blocks: shapes and labels on a canvas, and datasets between two axes |
 | `Selection`, `Item_list`, `Table` | Widgets with a selected row that scrolls |
 | `Line_edit`, `Text_field` | A line of text being edited, and the box that shows it |

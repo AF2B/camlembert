@@ -19,6 +19,7 @@ module Gauge = Camlembert.Gauge
 module Layout = Camlembert.Layout
 module Line = Camlembert.Line
 module Line_edit = Camlembert.Line_edit
+module Line_gauge = Camlembert.Line_gauge
 module Marker = Camlembert.Marker
 module Paragraph = Camlembert.Paragraph
 module Rect = Camlembert.Rect
@@ -66,7 +67,6 @@ let tabs_height = 3
 let footer_height = 1
 let filter_height = 3
 let border_thickness = 1
-let both_sides = 2
 let gauge_height = 3
 let gauges_width = 34
 let bars_height = 9
@@ -74,6 +74,8 @@ let version_width = 10
 let size_width = 9
 let remaining_weight = 1
 let chart_weight = 2
+let chart_gap = 1
+let log_side_padding = 1
 let dialog_width = 34
 let dialog_height = 5
 
@@ -91,6 +93,8 @@ let requests_baseline = 20
 let requests_cycle = 60
 let requests_per_tick = 3
 let requests_per_hour = 17
+let network_step = 7
+let network_cycle = 101
 let hour_count = 6
 let log_line_count = 60
 let wheel_rows = 3
@@ -120,6 +124,7 @@ let cpu_load ~tick =
 ;;
 
 let memory_load ~tick = (memory_start + tick) mod memory_cycle
+let network_load ~tick = tick * network_step mod network_cycle
 let ratio_of_percent percent = Float.of_int percent /. percent_scale
 
 let requests ~tick ~hour =
@@ -211,12 +216,15 @@ let hint_style =
   Style.make ~foreground:Color.Dark_gray ~modifiers:[ Style.Italic ] ()
 ;;
 
-let framed title =
+let framed ?footer ?(padding = Block.no_padding) title =
   Block.make
     ~borders:Block.all_sides
     ~border_type:Block.Rounded
     ~border_style
     ~title:(Line.of_string ~style:title_style (" " ^ title ^ " "))
+    ?footer
+    ~footer_alignment:Alignment.Right
+    ~padding
     ()
 ;;
 
@@ -278,9 +286,18 @@ let visible_packages model =
     all_packages
 ;;
 
+let package_count model =
+  Line.of_string
+    ~style:hint_style
+    (Printf.sprintf
+       " %d of %d "
+       (List.length (visible_packages model))
+       (List.length all_packages))
+;;
+
 let packages_table model =
   Table.make
-    ~block:(framed "Packages")
+    ~block:(framed ~footer:(package_count model) "Packages")
     ~header:
       [ Line.of_string "Package"
       ; Line.of_string "Version"
@@ -312,6 +329,16 @@ let gauge title ~percent ~color =
        ())
 ;;
 
+let line_gauge title ~percent ~color =
+  Line_gauge.widget
+    (Line_gauge.make
+       ~block:(framed title)
+       ~filled_style:(Style.make ~foreground:color ())
+       ~unfilled_style:(Style.make ~foreground:Color.Dark_gray ())
+       ~ratio:(ratio_of_percent percent)
+       ())
+;;
+
 let overview model : Widget.t =
   let gauges =
     Widget.split
@@ -328,6 +355,11 @@ let overview model : Widget.t =
             "Disk"
             ~percent:(Float.to_int (disk_ratio *. percent_scale))
             ~color:Color.Cyan )
+      ; ( Constraint.Length gauge_height
+        , line_gauge
+            "Network"
+            ~percent:(network_load ~tick:model.ticks)
+            ~color:Color.Magenta )
       ; Constraint.Fill remaining_weight, Clear.widget
       ]
   in
@@ -476,15 +508,27 @@ let radar model : Widget.t =
 
 let charts model : Widget.t =
   Widget.split
+    ~spacing:chart_gap
     ~direction:Layout.Horizontal
     [ Constraint.Fill chart_weight, history_chart model
     ; Constraint.Fill remaining_weight, radar model
     ]
 ;;
 
+let log_block =
+  framed
+    ~padding:
+      { Block.left = log_side_padding
+      ; right = log_side_padding
+      ; top = Int.zero
+      ; bottom = Int.zero
+      }
+    "Logs"
+;;
+
 let log_paragraph model =
   Paragraph.make
-    ~block:(framed "Logs")
+    ~block:log_block
     ~wrap:Wrap.Word
     ~scroll:model.log_scroll
     log_text
@@ -492,8 +536,8 @@ let log_paragraph model =
 
 (* How wide and how tall the visible part of the log is on a body region. *)
 let log_viewport body =
-  ( body.Rect.width - (both_sides * border_thickness)
-  , Int.max Int.one (body.Rect.height - (both_sides * border_thickness)) )
+  let inner = Block.inner log_block body in
+  inner.Rect.width, Int.max Int.one inner.Rect.height
 ;;
 
 let logs model : Widget.t =
