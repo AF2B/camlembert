@@ -6,6 +6,9 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 
+/* What ioctl returns when it fails. */
+static const int IOCTL_FAILURE = -1;
+
 /* Layout of the (columns, rows) pair returned to OCaml. */
 enum {
   SIZE_FIELD_COUNT = 2,
@@ -21,7 +24,7 @@ CAMLprim value camlembert_terminal_size(value unit)
   CAMLlocal1(size);
   struct winsize window;
 
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &window) == -1) {
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &window) == IOCTL_FAILURE) {
     caml_failwith("Tty.size: standard output is not a terminal");
   }
 
