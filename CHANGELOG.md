@@ -70,6 +70,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   item or row is under a cell, as drawn, so a mouse click can select it.
 - `Bar_chart`: vertical bars with a label under each one and the value
   written inside the bar when it fits, in steps of an eighth of a cell.
+- `Marker`: how finely a canvas or a chart draws: Braille patterns (two by
+  four dots per cell), half blocks, full blocks or bullets.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
