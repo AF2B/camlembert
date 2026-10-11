@@ -83,29 +83,41 @@ let sizes ~available constraints =
     List.map2 ( + ) requested extra)
 ;;
 
-let place ~direction area sizes =
+(* Puts the items one after another along [length] cells, [spacing] cells apart.
+   An item never starts past the end, even when the spacing alone is too long
+   for the area. *)
+let place ~direction ~spacing ~length area sizes =
   let { Rect.column; row; width; height } = area in
   let rect_at ~offset ~size =
+    let start = Int.min length offset in
     match direction with
-    | Horizontal -> Rect.make ~column:(column + offset) ~row ~width:size ~height
-    | Vertical -> Rect.make ~column ~row:(row + offset) ~width ~height:size
+    | Horizontal -> Rect.make ~column:(column + start) ~row ~width:size ~height
+    | Vertical -> Rect.make ~column ~row:(row + start) ~width ~height:size
   in
   List.fold_left_map
-    (fun offset size -> offset + size, rect_at ~offset ~size)
+    (fun offset size -> offset + size + spacing, rect_at ~offset ~size)
     Int.zero
     sizes
   |> snd
 ;;
 
-let split ~direction ~constraints area =
+let split ?(spacing = Int.zero) ~direction ~constraints area =
   let { Rect.width; height; _ } = area in
-  let available =
+  let length =
     match direction with
     | Horizontal -> width
     | Vertical -> height
   in
-  sizes ~available constraints |> place ~direction area
+  let spacing = non_negative spacing in
+  let gaps = spacing * non_negative (pred (List.length constraints)) in
+  sizes ~available:(non_negative (length - gaps)) constraints
+  |> place ~direction ~spacing ~length area
 ;;
 
-let horizontal constraints area = split ~direction:Horizontal ~constraints area
-let vertical constraints area = split ~direction:Vertical ~constraints area
+let horizontal ?spacing constraints area =
+  split ?spacing ~direction:Horizontal ~constraints area
+;;
+
+let vertical ?spacing constraints area =
+  split ?spacing ~direction:Vertical ~constraints area
+;;

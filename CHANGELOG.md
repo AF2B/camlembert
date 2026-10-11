@@ -31,7 +31,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - Text cursor: `Frame.set_cursor` shows the cursor at a `Position` once the
   frame is drawn, and hides it again when a frame does not ask for it.
 - `Layout` and `Constraint`: split a region into rows or columns using fixed
-  lengths, percentages, ratios, minimum and maximum sizes, and weighted fill.
+  lengths, percentages, ratios, minimum and maximum sizes, and weighted fill,
+  with optional spacing between the items (also in `Widget.split`).
 - `Alignment`, `Span`, `Line` and `Text`: styled text made of spans and lines,
   with left, center and right alignment.
 - `Block`: a frame with optional borders (plain, rounded, double or thick), a
