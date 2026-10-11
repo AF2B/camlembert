@@ -72,6 +72,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   written inside the bar when it fits, in steps of an eighth of a cell.
 - `Marker`: how finely a canvas or a chart draws: Braille patterns (two by
   four dots per cell), half blocks, full blocks or bullets.
+- `Canvas`: a drawing surface with its own coordinates, where points,
+  segments, rectangles and circles are drawn with Braille patterns, half
+  blocks, blocks or bullets, with text labels written over them.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
