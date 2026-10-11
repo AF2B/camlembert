@@ -69,6 +69,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   draws through ANSI escape sequences (moving the cursor and changing the
   style only where needed) and puts the terminal back when it returns, raises
   or is interrupted with Ctrl-C.
+- Bracketed paste: pasted text arrives as one `Event.Paste` when
+  `Unix_backend.with_terminal` is given `~features:[ Bracketed_paste ]`, even
+  when it comes in many pieces.
 - `Camlembert_unix.Input`: reads keyboard events and window resizes from the
   terminal, waiting as long as needed (`wait`) or for a limited time
   (`poll`). A lone Escape key is told apart from the start of a sequence, and

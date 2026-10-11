@@ -101,7 +101,7 @@ let view model frame =
 
 let wants_to_quit = function
   | Event.Key { key = Event.Char "q" | Event.Escape; _ } -> true
-  | Event.Key _ | Event.Resize _ -> false
+  | Event.Key _ | Event.Resize _ | Event.Paste _ -> false
 ;;
 
 let update model event =
@@ -113,7 +113,7 @@ let update model event =
     { model with count = model.count - step }
   | Event.Key { key = Event.Char "r"; _ } ->
     { model with count = initial_model.count }
-  | Event.Key _ | Event.Resize _ -> model
+  | Event.Key _ | Event.Resize _ | Event.Paste _ -> model
 ;;
 
 let rec run terminal events model =

@@ -2,7 +2,6 @@
 type t = { pending : string }
 
 let empty = { pending = "" }
-let has_pending parser = parser.pending <> ""
 
 (* Bytes with a meaning of their own. *)
 let escape = '\027'
@@ -72,6 +71,17 @@ let f10_code = 21
 let f11_code = 23
 let f12_code = 24
 
+(* A bracketed paste starts with one sequence and ends with another. *)
+let paste_start_code = 200
+let paste_end_code = 201
+
+let paste_marker code =
+  Printf.sprintf "%c%c%d%c" escape sequence_start code tilde_final
+;;
+
+let paste_start_marker = paste_marker paste_start_code
+let paste_end_marker = paste_marker paste_end_code
+
 (* A modifier number is one more than the sum of the modifiers held. *)
 let modifier_code_offset = 1
 let shift_bit = 1
@@ -122,6 +132,7 @@ let function_key_codes =
 (* What reading the bytes at some position gives. *)
 type decoded =
   | Pressed of Event.key * Event.modifiers * int
+  | Reported of Event.t * int
   | Ignored of int
   | Incomplete
 
@@ -185,6 +196,7 @@ let decode_alt input position =
   match decode_plain input (succ position) with
   | Pressed (key, modifiers, length) ->
     Pressed (key, { modifiers with Event.alt = true }, succ length)
+  | Reported (event, length) -> Reported (event, succ length)
   | Ignored length -> Ignored (succ length)
   | Incomplete -> Incomplete
 ;;
@@ -254,6 +266,35 @@ let csi_key numbers final =
     List.assoc_opt final cursor_keys |> Option.map (fun key -> key, modifiers)
 ;;
 
+let matches_at input marker ~position =
+  let rec compare_from offset =
+    offset >= String.length marker
+    || (input.[position + offset] = marker.[offset]
+        && compare_from (succ offset))
+  in
+  position + String.length marker <= String.length input
+  && compare_from Int.zero
+;;
+
+let rec find_marker input marker ~from =
+  if from + String.length marker > String.length input
+  then None
+  else if matches_at input marker ~position:from
+  then Some from
+  else find_marker input marker ~from:(succ from)
+;;
+
+(* The text of a bracketed paste, up to the sequence that ends it. *)
+let decode_paste input ~sequence_start:position ~content_start =
+  match find_marker input paste_end_marker ~from:content_start with
+  | None -> Incomplete
+  | Some content_end ->
+    let pasted = String.sub input content_start (content_end - content_start) in
+    Reported
+      ( Event.Paste pasted
+      , content_end + String.length paste_end_marker - position )
+;;
+
 let decode_sequence input position =
   let body_start = position + introducer_length in
   match find_final input body_start with
@@ -262,12 +303,19 @@ let decode_sequence input position =
   | Final final_index ->
     let length = succ final_index - position in
     let body = String.sub input body_start (final_index - body_start) in
-    (match
-       Option.bind (numbers_of body) (fun numbers ->
-         csi_key numbers input.[final_index])
-     with
-     | Some (key, modifiers) -> Pressed (key, modifiers, length)
-     | None -> Ignored length)
+    if matches_at input paste_start_marker ~position
+    then
+      decode_paste
+        input
+        ~sequence_start:position
+        ~content_start:(succ final_index)
+    else (
+      match
+        Option.bind (numbers_of body) (fun numbers ->
+          csi_key numbers input.[final_index])
+      with
+      | Some (key, modifiers) -> Pressed (key, modifiers, length)
+      | None -> Ignored length)
 ;;
 
 let decode_single_shift input position =
@@ -319,10 +367,18 @@ let parse ~final input =
         ( List.rev events
         , String.sub input position (String.length input - position) )
       | Ignored length -> loop (position + length) events
+      | Reported (event, length) -> loop (position + length) (event :: events)
       | Pressed (key, modifiers, length) ->
         loop (position + length) (Event.Key { key; modifiers } :: events))
   in
   loop Int.zero []
+;;
+
+(* While a paste is being received, a pause says nothing: the end marker is
+   still on its way. *)
+let has_pending parser =
+  parser.pending <> ""
+  && not (matches_at parser.pending paste_start_marker ~position:Int.zero)
 ;;
 
 let feed parser bytes =

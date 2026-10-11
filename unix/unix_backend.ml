@@ -28,17 +28,39 @@ let require_terminal () =
       "Unix_backend.with_terminal: standard input and output must be a terminal"
 ;;
 
-let with_terminal run =
+type feature = Bracketed_paste
+
+let enable_sequence = function
+  | Bracketed_paste -> Ansi.enable_bracketed_paste
+;;
+
+let disable_sequence = function
+  | Bracketed_paste -> Ansi.disable_bracketed_paste
+;;
+
+let with_terminal ?(features = []) run =
   require_terminal ();
   let saved_mode = Tty.enter_raw_mode () in
+  let enable_features = String.concat "" (List.map enable_sequence features) in
+  let disable_features =
+    String.concat "" (List.map disable_sequence features)
+  in
   let leave_terminal () =
-    send (Ansi.reset_style ^ Ansi.show_cursor ^ Ansi.leave_alternate_screen);
+    send
+      (disable_features
+       ^ Ansi.reset_style
+       ^ Ansi.show_cursor
+       ^ Ansi.leave_alternate_screen);
     flush ();
     Tty.restore_mode saved_mode;
     Sys.catch_break false
   in
   Sys.catch_break true;
   Fun.protect ~finally:leave_terminal (fun () ->
-    send (Ansi.enter_alternate_screen ^ Ansi.hide_cursor ^ Ansi.clear_screen);
+    send
+      (Ansi.enter_alternate_screen
+       ^ enable_features
+       ^ Ansi.hide_cursor
+       ^ Ansi.clear_screen);
     run (Terminal.create (backend ())))
 ;;

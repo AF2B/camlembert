@@ -367,12 +367,12 @@ let update model event ~screen =
      | Overview -> model
      | Packages -> move_in_packages model key
      | Logs -> scroll_logs model key ~screen)
-  | Event.Resize _ -> model
+  | Event.Resize _ | Event.Paste _ -> model
 ;;
 
 let wants_to_quit = function
   | Event.Key { key = Event.Char "q" | Event.Escape; _ } -> true
-  | Event.Key _ | Event.Resize _ -> false
+  | Event.Key _ | Event.Resize _ | Event.Paste _ -> false
 ;;
 
 let rec run terminal events model =

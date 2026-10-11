@@ -32,6 +32,7 @@ type t =
       { width : int
       ; height : int
       }
+  | Paste of string
 
 let no_modifiers = { shift = false; control = false; alt = false }
 let key_press ?(modifiers = no_modifiers) key = Key { key; modifiers }
@@ -71,4 +72,5 @@ let pp formatter = function
       (String.concat "; " (held_modifier_names modifiers))
   | Resize { width; height } ->
     Format.fprintf formatter "Resize { width = %d; height = %d }" width height
+  | Paste pasted -> Format.fprintf formatter "Paste %S" pasted
 ;;
