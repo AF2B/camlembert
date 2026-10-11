@@ -25,12 +25,28 @@ let build_buffer edits =
   buffer
 ;;
 
-(** Tells whether two buffers of the test screen hold exactly the same cells. *)
-let same_cells first second =
+(** Tells whether two buffers hold the same cells everywhere in [region]. *)
+let same_cells_in region first second =
   let same = ref true in
-  Rect.iter_positions Generators.screen (fun ~column ~row ->
+  Rect.iter_positions region (fun ~column ~row ->
     let first_cell = Buffer.get first ~column ~row in
     let second_cell = Buffer.get second ~column ~row in
     if not (Cell.equal first_cell second_cell) then same := false);
+  !same
+;;
+
+(** Tells whether two buffers of the test screen hold exactly the same cells. *)
+let same_cells first second = same_cells_in Generators.screen first second
+
+(** Tells whether two buffers of the test screen hold the same cells everywhere
+    except inside [hole]. *)
+let same_cells_outside hole first second =
+  let same = ref true in
+  Rect.iter_positions Generators.screen (fun ~column ~row ->
+    if not (Rect.contains hole ~column ~row)
+    then (
+      let first_cell = Buffer.get first ~column ~row in
+      let second_cell = Buffer.get second ~column ~row in
+      if not (Cell.equal first_cell second_cell) then same := false));
   !same
 ;;

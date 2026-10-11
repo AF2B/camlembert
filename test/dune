@@ -8,5 +8,6 @@
   test_buffer
   test_terminal
   test_layout
-  test_text)
+  test_text
+  test_block)
  (libraries camlembert alcotest qcheck-core qcheck-alcotest))

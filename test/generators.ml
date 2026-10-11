@@ -1,8 +1,10 @@
 (** Random value generators shared by the property-based tests. *)
 
+module Block = Camlembert.Block
 module Color = Camlembert.Color
 module Constraint = Camlembert.Constraint
 module Layout = Camlembert.Layout
+module Line = Camlembert.Line
 module Rect = Camlembert.Rect
 module Style = Camlembert.Style
 
@@ -182,6 +184,52 @@ let print_constraint = function
 ;;
 
 let print_constraints = QCheck2.Print.list print_constraint
+
+let block_sides =
+  QCheck2.Gen.(
+    list_size
+      (int_range Int.zero (List.length Block.all_sides))
+      (oneof_list Block.all_sides))
+;;
+
+let block_border_type =
+  QCheck2.Gen.oneof_list Block.[ Plain; Rounded; Double; Thick ]
+;;
+
+(** The parameters of a random block: sides, border type and optional title. *)
+let block_parameters =
+  QCheck2.Gen.(
+    triple block_sides block_border_type (option printable_ascii_text))
+;;
+
+let block_of_parameters (borders, border_type, title_text) =
+  Block.make
+    ~borders
+    ~border_type
+    ?title:(Option.map (fun text -> Line.of_string text) title_text)
+    ()
+;;
+
+let print_block_parameters (borders, border_type, title_text) =
+  let side_name = function
+    | Block.Top -> "Top"
+    | Block.Bottom -> "Bottom"
+    | Block.Left -> "Left"
+    | Block.Right -> "Right"
+  in
+  let border_type_name = function
+    | Block.Plain -> "Plain"
+    | Block.Rounded -> "Rounded"
+    | Block.Double -> "Double"
+    | Block.Thick -> "Thick"
+  in
+  Printf.sprintf
+    "borders=[%s] border_type=%s title=%s"
+    (String.concat "; " (List.map side_name borders))
+    (border_type_name border_type)
+    (QCheck2.Print.(option string) title_text)
+;;
+
 let print_rect = Format.asprintf "%a" Rect.pp
 let print_margins = QCheck2.Print.(quad int int int int)
 let print_style = Format.asprintf "%a" Style.pp
