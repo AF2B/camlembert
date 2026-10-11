@@ -9,6 +9,7 @@ module Style = Camlembert.Style
 
 let origin = 0
 let oversize_factor = 2
+let halving_divisor = 2
 let box_width = 6
 let box_height = 3
 let title_box_width = 10
@@ -198,7 +199,7 @@ let test_styles_apply_to_the_right_cells () =
   in
   let buffer = render block ~width:box_width ~height:box_height in
   let style_at ~column ~row = (Buffer.get buffer ~column ~row).Cell.style in
-  let middle = box_width / 2 in
+  let middle = box_width / halving_divisor in
   Alcotest.(check bool)
     "border has both"
     true

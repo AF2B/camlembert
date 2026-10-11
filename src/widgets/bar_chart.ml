@@ -13,6 +13,7 @@ type t =
   ; bars : bar list
   }
 
+let no_fraction = 0.0
 let default_bar_width = 3
 let default_bar_gap = 1
 let label_rows = 1
@@ -50,7 +51,7 @@ let largest_value chart =
 
 let fraction_of ~value ~maximum =
   if maximum <= Int.zero
-  then 0.0
+  then no_fraction
   else Float.of_int value /. Float.of_int maximum
 ;;
 
