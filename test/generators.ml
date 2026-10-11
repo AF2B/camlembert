@@ -101,6 +101,42 @@ let mixed_text =
     Stdlib.Buffer.contents buffer)
 ;;
 
+let screen_width = 8
+let screen_height = 4
+let max_edit_count = 10
+
+let screen =
+  Rect.make
+    ~column:Int.zero
+    ~row:Int.zero
+    ~width:screen_width
+    ~height:screen_height
+;;
+
+(** A single-character write at a position of the test screen. *)
+type edit =
+  { column : int
+  ; row : int
+  ; symbol : string
+  ; style : Style.t
+  }
+
+let edit =
+  QCheck2.Gen.(
+    let+ column = int_range Int.zero (pred screen_width)
+    and+ row = int_range Int.zero (pred screen_height)
+    and+ character = char_range first_printable_ascii last_printable_ascii
+    and+ style = style in
+    { column; row; symbol = String.make Int.one character; style })
+;;
+
+let edits = QCheck2.Gen.(list_size (int_range Int.zero max_edit_count) edit)
+
+let print_edit edit =
+  Printf.sprintf "(%d, %d, %S)" edit.column edit.row edit.symbol
+;;
+
+let print_edits = QCheck2.Print.list print_edit
 let print_rect = Format.asprintf "%a" Rect.pp
 let print_margins = QCheck2.Print.(quad int int int int)
 let print_style = Format.asprintf "%a" Style.pp
