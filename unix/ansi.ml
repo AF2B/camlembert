@@ -20,6 +20,12 @@ let alternate_screen_mode = 1049
 let cursor_visibility_mode = 25
 let bracketed_paste_mode = 2004
 
+(* The mouse is reported in three layers: presses and releases, moves while a
+   button is held, and the extended format that gives big coordinates. *)
+let mouse_press_mode = 1000
+let mouse_drag_mode = 1002
+let mouse_extended_mode = 1006
+
 (* Select Graphic Rendition parameters, from ECMA-48 and xterm. *)
 let reset_code = 0
 let bold_code = 1
@@ -58,6 +64,21 @@ let leave_alternate_screen =
 
 let show_cursor = private_mode ~mode:cursor_visibility_mode set_mode_final
 let hide_cursor = private_mode ~mode:cursor_visibility_mode reset_mode_final
+let mouse_modes = [ mouse_press_mode; mouse_drag_mode; mouse_extended_mode ]
+
+let enable_mouse =
+  String.concat
+    ""
+    (List.map (fun mode -> private_mode ~mode set_mode_final) mouse_modes)
+;;
+
+let disable_mouse =
+  String.concat
+    ""
+    (List.map
+       (fun mode -> private_mode ~mode reset_mode_final)
+       (List.rev mouse_modes))
+;;
 
 let enable_bracketed_paste =
   private_mode ~mode:bracketed_paste_mode set_mode_final

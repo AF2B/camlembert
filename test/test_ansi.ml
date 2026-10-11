@@ -34,6 +34,14 @@ let test_mode_switches () =
     (escape ^ "[?1049l")
     Ansi.leave_alternate_screen;
   Alcotest.(check string)
+    "enable mouse"
+    (escape ^ "[?1000h" ^ escape ^ "[?1002h" ^ escape ^ "[?1006h")
+    Ansi.enable_mouse;
+  Alcotest.(check string)
+    "disable mouse"
+    (escape ^ "[?1006l" ^ escape ^ "[?1002l" ^ escape ^ "[?1000l")
+    Ansi.disable_mouse;
+  Alcotest.(check string)
     "enable bracketed paste"
     (escape ^ "[?2004h")
     Ansi.enable_bracketed_paste;

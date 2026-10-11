@@ -8,8 +8,8 @@
 
     Understood: printable and UTF-8 characters, Enter, Tab, Backspace, Control
     and Alt combinations, cursor and editing keys with their modifiers,
-    function keys F1 to F12, Shift+Tab, and pasted text between the sequences
-    that mark it. Anything else is ignored. *)
+    function keys F1 to F12, Shift+Tab, mouse reports in the extended format and
+    pasted text between the sequences that mark it. Anything else is ignored. *)
 
 type t
 

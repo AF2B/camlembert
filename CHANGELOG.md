@@ -69,6 +69,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   draws through ANSI escape sequences (moving the cursor and changing the
   style only where needed) and puts the terminal back when it returns, raises
   or is interrupted with Ctrl-C.
+- Mouse: presses, releases, drags and wheel turns arrive as `Event.Mouse`, with
+  the cell they happened over and the modifier keys held, when
+  `Unix_backend.with_terminal` is given `~features:[ Mouse ]`.
 - Bracketed paste: pasted text arrives as one `Event.Paste` when
   `Unix_backend.with_terminal` is given `~features:[ Bracketed_paste ]`, even
   when it comes in many pieces.

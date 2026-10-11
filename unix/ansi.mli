@@ -15,6 +15,13 @@ val hide_cursor : string
 (** Shows the text cursor. *)
 val show_cursor : string
 
+(** Asks the terminal to report the mouse: button presses and releases, the
+    wheel, and moves while a button is held down. *)
+val enable_mouse : string
+
+(** Stops the terminal from reporting the mouse. *)
+val disable_mouse : string
+
 (** Asks the terminal to mark pasted text, so it arrives as a single paste
     instead of as key presses. *)
 val enable_bracketed_paste : string
