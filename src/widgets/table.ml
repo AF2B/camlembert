@@ -54,7 +54,8 @@ let column_regions table ~column ~row ~width =
     | Column constraint_ -> constraint_
     | Gap -> Constraint.Length table.column_spacing
   in
-  let row_region = Rect.make ~column ~row ~width ~height:Int.one in
+  let row_width = Int.max Int.zero width in
+  let row_region = Rect.make ~column ~row ~width:row_width ~height:Int.one in
   Layout.horizontal (List.map constraint_of slots) row_region
   |> List.combine slots
   |> List.filter_map (function
