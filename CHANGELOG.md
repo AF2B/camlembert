@@ -33,6 +33,10 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   inside it goes.
 - `Paragraph`: shows text line by line, aligned left, center or right, cut at
   the edges of its region and optionally framed by a `Block`.
+- `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
+  Backspace, Escape, cursor and editing keys, F1 to F12, with Shift, Control
+  and Alt) and a parser that turns the bytes of a terminal into them, even
+  when a sequence arrives in pieces.
 - `camlembert.unix`: a backend for real terminals. `Unix_backend.with_terminal`
   runs a function with the terminal in raw mode on the alternate screen,
   draws through ANSI escape sequences (moving the cursor and changing the
