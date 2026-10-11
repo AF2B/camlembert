@@ -1,0 +1,7 @@
+(library
+ (name camlembert_unix)
+ (public_name camlembert.unix)
+ (libraries camlembert unix)
+ (foreign_stubs
+  (language c)
+  (names terminal_size_stubs)))
