@@ -20,5 +20,6 @@
   test_selection
   test_item_list
   test_table
-  test_scrollbar)
+  test_scrollbar
+  test_clear)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
