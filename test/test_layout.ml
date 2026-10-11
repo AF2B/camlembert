@@ -22,6 +22,8 @@ let wide_region length = region ~width:length ~height:cross_axis_size
 let tall_region length = region ~width:cross_axis_size ~height:length
 let widths rects = List.map (fun rect -> rect.Rect.width) rects
 let heights rects = List.map (fun rect -> rect.Rect.height) rects
+let columns rects = List.map (fun rect -> rect.Rect.column) rects
+let rows rects = List.map (fun rect -> rect.Rect.row) rects
 
 let split_widths ~region_width constraints =
   widths (Layout.horizontal constraints (wide_region region_width))
@@ -217,6 +219,135 @@ let test_regions_follow_each_other_inside_the_area () =
        area)
 ;;
 
+let test_spacing_separates_the_items () =
+  let item_size = 5 in
+  let item_count = 3 in
+  let gap = 2 in
+  let region_length = (item_count * item_size) + (pred item_count * gap) in
+  let rects =
+    Layout.horizontal
+      ~spacing:gap
+      (List.init item_count (Fun.const (Constraint.Length item_size)))
+      (wide_region region_length)
+  in
+  Alcotest.(check (list int))
+    "columns"
+    (List.init item_count (fun index -> index * (item_size + gap)))
+    (columns rects);
+  Alcotest.(check (list int))
+    "widths"
+    (List.init item_count (Fun.const item_size))
+    (widths rects)
+;;
+
+let test_spacing_is_taken_before_percentages () =
+  let region_length = 100 in
+  let half = 50 in
+  let gap = 2 in
+  let rects =
+    Layout.horizontal
+      ~spacing:gap
+      [ Constraint.Percentage half; Constraint.Percentage half ]
+      (wide_region region_length)
+  in
+  let item_size = (region_length - gap) / two_terms in
+  Alcotest.(check (list int)) "widths" [ item_size; item_size ] (widths rects);
+  Alcotest.(check (list int))
+    "columns"
+    [ origin; item_size + gap ]
+    (columns rects)
+;;
+
+let test_fill_takes_what_the_spacing_leaves () =
+  let edge_size = 4 in
+  let gap = 1 in
+  let region_length = 20 in
+  let fill_size = region_length - (two_terms * edge_size) - (two_terms * gap) in
+  let rects =
+    Layout.horizontal
+      ~spacing:gap
+      [ Constraint.Length edge_size
+      ; Constraint.Fill single_weight
+      ; Constraint.Length edge_size
+      ]
+      (wide_region region_length)
+  in
+  Alcotest.(check (list int))
+    "widths"
+    [ edge_size; fill_size; edge_size ]
+    (widths rects);
+  Alcotest.(check (list int))
+    "columns"
+    [ origin; edge_size + gap; edge_size + gap + fill_size + gap ]
+    (columns rects)
+;;
+
+let test_spacing_works_from_top_to_bottom () =
+  let item_size = 3 in
+  let gap = 1 in
+  let region_length = 10 in
+  let rects =
+    Layout.vertical
+      ~spacing:gap
+      [ Constraint.Length item_size; Constraint.Fill single_weight ]
+      (tall_region region_length)
+  in
+  Alcotest.(check (list int)) "rows" [ origin; item_size + gap ] (rows rects);
+  Alcotest.(check (list int))
+    "heights"
+    [ item_size; region_length - item_size - gap ]
+    (heights rects)
+;;
+
+let test_a_lone_item_has_no_spacing () =
+  let item_size = 5 in
+  let region_length = 10 in
+  let wide_spacing = 4 in
+  let rects =
+    Layout.horizontal
+      ~spacing:wide_spacing
+      [ Constraint.Length item_size ]
+      (wide_region region_length)
+  in
+  Alcotest.(check (list int)) "columns" [ origin ] (columns rects);
+  Alcotest.(check (list int)) "widths" [ item_size ] (widths rects)
+;;
+
+let test_spacing_longer_than_the_region_leaves_nothing () =
+  let region_length = 4 in
+  let overlong_spacing = 5 in
+  let rects =
+    Layout.horizontal
+      ~spacing:overlong_spacing
+      (List.init thirds (Fun.const (Constraint.Fill single_weight)))
+      (wide_region region_length)
+  in
+  Alcotest.(check (list int))
+    "widths"
+    (List.init thirds (Fun.const no_cells))
+    (widths rects);
+  Alcotest.(check (list int))
+    "columns stay inside"
+    [ origin; region_length; region_length ]
+    (columns rects)
+;;
+
+let test_negative_spacing_counts_as_none () =
+  let item_size = 3 in
+  let region_length = 10 in
+  let negative_spacing = -3 in
+  let constraints =
+    [ Constraint.Length item_size; Constraint.Fill single_weight ]
+  in
+  Alcotest.(check (list rect_testable))
+    "same as none"
+    (Layout.horizontal constraints (wide_region region_length))
+    (Layout.horizontal
+       ~spacing:negative_spacing
+       constraints
+       (wide_region region_length))
+;;
+
 let extent ~direction rect =
   match direction with
   | Layout.Horizontal -> rect.Rect.width
@@ -288,6 +419,56 @@ let property_regions_tile_the_area_without_overflowing =
        let rects = Layout.split ~direction ~constraints area in
        tile_the_area ~direction area rects
        && sum (List.map (extent ~direction) rects) <= extent ~direction area)
+;;
+
+let rec neighbours = function
+  | first :: (second :: _ as rest) -> (first, second) :: neighbours rest
+  | [] | [ _ ] -> []
+;;
+
+let max_spacing = 5
+
+let spaced_scenario =
+  QCheck2.Gen.(pair layout_scenario (int_range Int.zero max_spacing))
+;;
+
+let print_spaced_scenario = QCheck2.Print.(pair print_layout_scenario int)
+
+let property_spaced_regions_stay_in_order_inside_the_area =
+  QCheck2.Test.make
+    ~name:"spaced regions stay in order and inside the area"
+    ~print:print_spaced_scenario
+    spaced_scenario
+    (fun ((direction, constraints, area), spacing) ->
+       let rects = Layout.split ~spacing ~direction ~constraints area in
+       let area_start = start ~direction area in
+       let area_end = area_start + extent ~direction area in
+       let rect_end rect = start ~direction rect + extent ~direction rect in
+       List.for_all
+         (fun rect ->
+            start ~direction rect >= area_start && rect_end rect <= area_end)
+         rects
+       && List.for_all
+            (fun (previous, next) -> start ~direction next >= rect_end previous)
+            (neighbours rects))
+;;
+
+let property_neighbours_are_a_spacing_apart_when_it_fits =
+  QCheck2.Test.make
+    ~name:"neighbours are exactly the spacing apart when it fits"
+    ~print:print_spaced_scenario
+    spaced_scenario
+    (fun ((direction, constraints, area), spacing) ->
+       let rects = Layout.split ~spacing ~direction ~constraints area in
+       let gap_count = Int.max Int.zero (pred (List.length constraints)) in
+       let spacing_fits = spacing * gap_count <= extent ~direction area in
+       (not spacing_fits)
+       || List.for_all
+            (fun (previous, next) ->
+               start ~direction next
+               - (start ~direction previous + extent ~direction previous)
+               = spacing)
+            (neighbours rects))
 ;;
 
 let property_fill_absorbs_what_is_left =
@@ -368,12 +549,41 @@ let () =
             `Quick
             test_regions_follow_each_other_inside_the_area
         ] )
+    ; ( "spacing"
+      , [ Alcotest.test_case
+            "separates the items"
+            `Quick
+            test_spacing_separates_the_items
+        ; Alcotest.test_case
+            "before percentages"
+            `Quick
+            test_spacing_is_taken_before_percentages
+        ; Alcotest.test_case
+            "before the fill"
+            `Quick
+            test_fill_takes_what_the_spacing_leaves
+        ; Alcotest.test_case
+            "vertical"
+            `Quick
+            test_spacing_works_from_top_to_bottom
+        ; Alcotest.test_case "lone item" `Quick test_a_lone_item_has_no_spacing
+        ; Alcotest.test_case
+            "longer than the region"
+            `Quick
+            test_spacing_longer_than_the_region_leaves_nothing
+        ; Alcotest.test_case
+            "negative"
+            `Quick
+            test_negative_spacing_counts_as_none
+        ] )
     ; ( "properties"
       , List.map
           QCheck_alcotest.to_alcotest
           [ property_one_region_per_constraint
           ; property_regions_tile_the_area_without_overflowing
           ; property_fill_absorbs_what_is_left
+          ; property_spaced_regions_stay_in_order_inside_the_area
+          ; property_neighbours_are_a_spacing_apart_when_it_fits
           ] )
     ]
 ;;
