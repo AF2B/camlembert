@@ -41,6 +41,11 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   that stays readable over the filled part.
 - `Tabs`: a row of titles with the selected one highlighted and a divider
   between them. `Line.patch_style` layers a style under the spans of a line.
+- `Item_list` and `Selection`: a list of rows with a selected one, a
+  highlight and an optional symbol before it. The list scrolls to keep the
+  selection in view, and `Selection` moves it. `Stateful_widget` and
+  `Frame.render_stateful_widget` draw widgets that keep a state between
+  frames.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
