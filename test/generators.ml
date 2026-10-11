@@ -1,6 +1,8 @@
 (** Random value generators shared by the property-based tests. *)
 
 module Color = Camlembert.Color
+module Constraint = Camlembert.Constraint
+module Layout = Camlembert.Layout
 module Rect = Camlembert.Rect
 module Style = Camlembert.Style
 
@@ -137,6 +139,49 @@ let print_edit edit =
 ;;
 
 let print_edits = QCheck2.Print.list print_edit
+let max_constraint_size = 30
+let max_percentage = 120
+let max_ratio_term = 6
+let max_constraint_count = 6
+
+let layout_constraint =
+  QCheck2.Gen.(
+    let size = int_range Int.zero max_constraint_size in
+    oneof
+      [ map (fun length -> Constraint.Length length) size
+      ; map
+          (fun percentage -> Constraint.Percentage percentage)
+          (int_range Int.zero max_percentage)
+      ; (let+ numerator = int_range Int.zero max_ratio_term
+         and+ denominator = int_range Int.zero max_ratio_term in
+         Constraint.Ratio { numerator; denominator })
+      ; map (fun minimum -> Constraint.Min minimum) size
+      ; map (fun maximum -> Constraint.Max maximum) size
+      ; map (fun weight -> Constraint.Fill weight) size
+      ])
+;;
+
+let layout_constraints =
+  QCheck2.Gen.(
+    list_size (int_range Int.zero max_constraint_count) layout_constraint)
+;;
+
+let layout_direction =
+  QCheck2.Gen.oneof_list [ Layout.Horizontal; Layout.Vertical ]
+;;
+
+let print_constraint = function
+  | Constraint.Length length -> Printf.sprintf "Length %d" length
+  | Constraint.Percentage percentage ->
+    Printf.sprintf "Percentage %d" percentage
+  | Constraint.Ratio { numerator; denominator } ->
+    Printf.sprintf "Ratio %d/%d" numerator denominator
+  | Constraint.Min minimum -> Printf.sprintf "Min %d" minimum
+  | Constraint.Max maximum -> Printf.sprintf "Max %d" maximum
+  | Constraint.Fill weight -> Printf.sprintf "Fill %d" weight
+;;
+
+let print_constraints = QCheck2.Print.list print_constraint
 let print_rect = Format.asprintf "%a" Rect.pp
 let print_margins = QCheck2.Print.(quad int int int int)
 let print_style = Format.asprintf "%a" Style.pp

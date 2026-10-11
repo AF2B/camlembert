@@ -6,5 +6,6 @@
   test_grapheme
   test_cell
   test_buffer
-  test_terminal)
+  test_terminal
+  test_layout)
  (libraries camlembert alcotest qcheck-core qcheck-alcotest))
