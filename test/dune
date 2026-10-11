@@ -16,5 +16,7 @@
   test_input
   test_wrap
   test_gauge
-  test_tabs)
+  test_tabs
+  test_selection
+  test_item_list)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
