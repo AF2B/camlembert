@@ -182,6 +182,72 @@ let test_iter_positions_goes_row_by_row () =
     (List.rev !visited)
 ;;
 
+let popup_width = 20
+let popup_height = 5
+let odd_leftover_width = 21
+let oversized = 200
+let halving_divisor = 2
+let oversize_factor = 2
+
+let test_centered_puts_a_rectangle_in_the_middle () =
+  let screen =
+    Rect.make
+      ~column:origin
+      ~row:origin
+      ~width:screen_width
+      ~height:screen_height
+  in
+  let popup = Rect.centered screen ~width:popup_width ~height:popup_height in
+  Alcotest.check
+    rect_testable
+    "centered"
+    (Rect.make
+       ~column:((screen_width - popup_width) / halving_divisor)
+       ~row:((screen_height - popup_height) / halving_divisor)
+       ~width:popup_width
+       ~height:popup_height)
+    popup
+;;
+
+let test_centered_gives_the_odd_leftover_to_the_right () =
+  let container =
+    Rect.make
+      ~column:origin
+      ~row:origin
+      ~width:odd_leftover_width
+      ~height:block_size
+  in
+  let centered = Rect.centered container ~width:block_size ~height:block_size in
+  Alcotest.(check int)
+    "left margin"
+    (pred (Rect.right container - Rect.right centered))
+    centered.Rect.column
+;;
+
+let test_centered_follows_the_container_offset () =
+  let container =
+    square ~column:overlap_offset ~row:gap_between_blocks ~size:block_size
+  in
+  let centered = Rect.centered container ~width:tiny_size ~height:tiny_size in
+  Alcotest.(check bool)
+    "inside the container"
+    true
+    (Rect.equal centered (Rect.intersection container centered))
+;;
+
+let test_centered_is_cut_to_the_container () =
+  let centered = Rect.centered block ~width:oversized ~height:oversized in
+  Alcotest.check rect_testable "same as the container" block centered
+;;
+
+let test_centered_rejects_negative_sizes () =
+  Alcotest.check_raises
+    "negative"
+    (Invalid_argument "Rect.centered: negative size")
+    (fun () ->
+       ignore (Rect.centered block ~width:negative_value ~height:tiny_size))
+;;
+
 let count_positions rect =
   let count = ref Int.zero in
   Rect.iter_positions rect (fun ~column:_ ~row:_ -> incr count);
@@ -246,6 +312,22 @@ let property_shrunk_rect_lies_inside_original =
          (fun ~column ~row -> Rect.contains rect ~column ~row))
 ;;
 
+let property_centered_lies_inside_the_container =
+  QCheck2.Test.make
+    ~name:"a centered rectangle lies inside its container"
+    ~print:QCheck2.Print.(triple Generators.print_rect int int)
+    QCheck2.Gen.(
+      triple
+        Generators.rect
+        (int_range Int.zero (oversize_factor * Generators.max_extent))
+        (int_range Int.zero (oversize_factor * Generators.max_extent)))
+    (fun (container, width, height) ->
+       let centered = Rect.centered container ~width ~height in
+       Rect.equal (Rect.intersection container centered) centered
+       && centered.Rect.width = Int.min width container.Rect.width
+       && centered.Rect.height = Int.min height container.Rect.height)
+;;
+
 let () =
   Alcotest.run
     "Rect"
@@ -288,6 +370,28 @@ let () =
             `Quick
             test_shrink_rejects_negative_margins
         ] )
+    ; ( "centered"
+      , [ Alcotest.test_case
+            "middle"
+            `Quick
+            test_centered_puts_a_rectangle_in_the_middle
+        ; Alcotest.test_case
+            "odd leftover"
+            `Quick
+            test_centered_gives_the_odd_leftover_to_the_right
+        ; Alcotest.test_case
+            "container offset"
+            `Quick
+            test_centered_follows_the_container_offset
+        ; Alcotest.test_case
+            "cut to the container"
+            `Quick
+            test_centered_is_cut_to_the_container
+        ; Alcotest.test_case
+            "negative sizes"
+            `Quick
+            test_centered_rejects_negative_sizes
+        ] )
     ; ( "iteration"
       , [ Alcotest.test_case
             "row by row"
@@ -302,6 +406,7 @@ let () =
           ; property_intersection_with_itself_is_identity
           ; property_area_counts_positions
           ; property_shrunk_rect_lies_inside_original
+          ; property_centered_lies_inside_the_container
           ] )
     ]
 ;;
