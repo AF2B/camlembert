@@ -1,12 +1,15 @@
-(* A dashboard with three tabs. Overview shows gauges, a chart and bars that
-   move by themselves. Packages has a filter to type in and a table to move
-   through. Logs is a text to scroll. Everything works with the keyboard and
-   with the mouse: click a tab or a row, turn the wheel, paste into the filter.
-   Tab and Shift+Tab change the tab, Escape asks to quit. *)
+(* A dashboard with four tabs. Overview shows gauges, a sparkline and bars that
+   move by themselves. Charts plots two series and draws a radar on a canvas,
+   both moving by themselves. Packages has a filter to type in and a table to
+   move through. Logs is a text to scroll. Everything works with the keyboard
+   and with the mouse: click a tab or a row, turn the wheel, paste into the
+   filter. Tab and Shift+Tab change the tab, Escape asks to quit. *)
 
 module Alignment = Camlembert.Alignment
 module Bar_chart = Camlembert.Bar_chart
 module Block = Camlembert.Block
+module Canvas = Camlembert.Canvas
+module Chart = Camlembert.Chart
 module Clear = Camlembert.Clear
 module Color = Camlembert.Color
 module Constraint = Camlembert.Constraint
@@ -16,6 +19,7 @@ module Gauge = Camlembert.Gauge
 module Layout = Camlembert.Layout
 module Line = Camlembert.Line
 module Line_edit = Camlembert.Line_edit
+module Marker = Camlembert.Marker
 module Paragraph = Camlembert.Paragraph
 module Rect = Camlembert.Rect
 module Scrollbar = Camlembert.Scrollbar
@@ -34,13 +38,15 @@ module Unix_backend = Camlembert_unix.Unix_backend
 
 type tab =
   | Overview
+  | Charts
   | Packages
   | Logs
 
-let tabs = [ Overview; Packages; Logs ]
+let tabs = [ Overview; Charts; Packages; Logs ]
 
 let title_of = function
   | Overview -> "Overview"
+  | Charts -> "Charts"
   | Packages -> "Packages"
   | Logs -> "Logs"
 ;;
@@ -67,6 +73,7 @@ let bars_height = 9
 let version_width = 10
 let size_width = 9
 let remaining_weight = 1
+let chart_weight = 2
 let dialog_width = 34
 let dialog_height = 5
 
@@ -87,6 +94,25 @@ let requests_per_hour = 17
 let hour_count = 6
 let log_line_count = 60
 let wheel_rows = 3
+
+(* The radar on the Charts tab: rings, a cross, blips and a sweeping beam, with
+   the beam fading behind its head. Distances are fractions of the radius. *)
+let radar_marker = Marker.Braille
+let center = 0.0
+let radar_radius = 1.0
+let ring_radii = [ 0.33; 0.66; radar_radius ]
+let blips = [ 0.5, 0.3; -0.4, 0.55; -0.2, -0.6; 0.7, -0.35 ]
+let sweep_step = 0.2
+
+let beam_trail =
+  [ 0.0, Color.Light_green
+  ; 0.12, Color.Green
+  ; 0.24, Color.Green
+  ; 0.36, Color.Dark_gray
+  ]
+;;
+
+let percent_labels = [ "0"; "50"; "100" ]
 
 let cpu_load ~tick =
   cpu_baseline
@@ -335,6 +361,127 @@ let overview model : Widget.t =
     ]
 ;;
 
+let axis_start = 0.0
+let halving_divisor = 2.0
+let history_seconds = Float.of_int history_size *. tick_seconds
+
+let history_labels =
+  [ Printf.sprintf "-%.0f s" history_seconds
+  ; Printf.sprintf "-%.1f s" (history_seconds /. halving_divisor)
+  ; "now"
+  ]
+;;
+
+let history_chart model : Widget.t =
+  let points percents =
+    List.mapi
+      (fun index percent -> Float.of_int index, Float.of_int percent)
+      percents
+  in
+  let memory_history =
+    List.init history_size (fun index ->
+      memory_load ~tick:(model.ticks - history_size + succ index))
+  in
+  let series ~name ~color percents =
+    Chart.dataset
+      ~graph_type:Chart.Connected
+      ~style:(Style.make ~foreground:color ())
+      ~name
+      (points percents)
+  in
+  Chart.widget
+    (Chart.make
+       ~block:(framed "CPU and memory")
+       ~x_axis:
+         (Chart.axis
+            ~title:"time"
+            ~labels:history_labels
+            ~bounds:(axis_start, Float.of_int (pred history_size))
+            ())
+       ~y_axis:
+         (Chart.axis
+            ~title:"%"
+            ~labels:percent_labels
+            ~bounds:(axis_start, percent_scale)
+            ())
+       [ series ~name:"CPU" ~color:Color.Green model.cpu_history
+       ; series ~name:"Memory" ~color:Color.Yellow memory_history
+       ])
+;;
+
+(* Bounds that make a unit as long along both axes, so that a circle looks
+   round: the shorter side of the region goes from -1 to 1. *)
+let square_bounds marker ~width ~height =
+  let dots_per_column, dots_per_row = Marker.dots_per_cell marker in
+  let dots_wide = width * dots_per_column in
+  let dots_tall = height * dots_per_row in
+  let shorter = Float.of_int (Int.min dots_wide dots_tall) in
+  let half_range dots = Float.of_int dots /. shorter in
+  ( (Float.neg (half_range dots_wide), half_range dots_wide)
+  , (Float.neg (half_range dots_tall), half_range dots_tall) )
+;;
+
+let radar_shapes model =
+  let ring_style = Style.make ~foreground:Color.Dark_gray () in
+  let blip_style = Style.make ~foreground:Color.Yellow () in
+  let angle = Float.of_int model.ticks *. sweep_step in
+  let ring radius =
+    Canvas.Circle { x = center; y = center; radius; style = ring_style }
+  in
+  let spoke (x, y) =
+    Canvas.Segment
+      { x1 = Float.neg x; y1 = Float.neg y; x2 = x; y2 = y; style = ring_style }
+  in
+  let beam (gap, color) =
+    Canvas.Segment
+      { x1 = center
+      ; y1 = center
+      ; x2 = radar_radius *. cos (angle -. gap)
+      ; y2 = radar_radius *. sin (angle -. gap)
+      ; style = Style.make ~foreground:color ()
+      }
+  in
+  List.map ring ring_radii
+  @ [ spoke (radar_radius, center); spoke (center, radar_radius) ]
+  @ [ Canvas.Points { coordinates = blips; style = blip_style } ]
+  @ List.map beam (List.rev beam_trail)
+;;
+
+let radar model : Widget.t =
+  fun area buffer ->
+  let block = framed "Radar" in
+  let inner = Block.inner block area in
+  if Rect.is_empty inner
+  then Block.widget block area buffer
+  else (
+    let x_bounds, y_bounds =
+      square_bounds
+        radar_marker
+        ~width:inner.Rect.width
+        ~height:inner.Rect.height
+    in
+    Canvas.widget
+      (Canvas.make
+         ~block
+         ~marker:radar_marker
+         ~labels:
+           [ { Canvas.x = center; y = radar_radius; text = Line.of_string "N" }
+           ]
+         ~x_bounds
+         ~y_bounds
+         (radar_shapes model))
+      area
+      buffer)
+;;
+
+let charts model : Widget.t =
+  Widget.split
+    ~direction:Layout.Horizontal
+    [ Constraint.Fill chart_weight, history_chart model
+    ; Constraint.Fill remaining_weight, radar model
+    ]
+;;
+
 let log_paragraph model =
   Paragraph.make
     ~block:(framed "Logs")
@@ -372,7 +519,7 @@ let logs model : Widget.t =
 ;;
 
 let help_for = function
-  | Overview -> "Click a tab | Tab switches tab | Esc quits"
+  | Overview | Charts -> "Click a tab | Tab switches tab | Esc quits"
   | Packages -> "Type to filter | Up, Down or click move | Esc quits"
   | Logs -> "Up, Down, PgUp, PgDn or the wheel scroll | Esc quits"
 ;;
@@ -398,6 +545,7 @@ let view model frame =
   Frame.render_widget frame (Tabs.widget (tab_bar model)) ~area:regions.tab_bar;
   (match model.tab with
    | Overview -> Frame.render_widget frame (overview model) ~area:regions.body
+   | Charts -> Frame.render_widget frame (charts model) ~area:regions.body
    | Logs -> Frame.render_widget frame (logs model) ~area:regions.body
    | Packages ->
      let filter_region, table_region = packages_regions regions.body in
@@ -470,7 +618,7 @@ let press_key model key ~screen =
   | Logs, Event.Page_down -> scroll_logs model ~by:page ~screen
   | Logs, Event.Home -> scroll_to_start model ~screen
   | Logs, Event.End -> scroll_to_end model ~screen
-  | (Overview | Packages | Logs), _ -> model
+  | (Overview | Charts | Packages | Logs), _ -> model
 ;;
 
 let click model position ~screen =
@@ -491,7 +639,7 @@ let click model position ~screen =
          position
        |> Option.iter (fun row -> Selection.select model.packages (Some row));
        model
-     | Overview | Logs -> model)
+     | Overview | Charts | Logs -> model)
 ;;
 
 let turn_wheel model action ~screen =
@@ -503,7 +651,7 @@ let turn_wheel model action ~screen =
   match model.tab with
   | Packages -> move_in_packages model ~by:direction
   | Logs -> scroll_logs model ~by:(direction * wheel_rows) ~screen
-  | Overview -> model
+  | Overview | Charts -> model
 ;;
 
 (* Typing in the filter starts the table over from its first row. *)
@@ -543,11 +691,11 @@ let update model event ~screen =
       then Some model
       else (
         match model.tab, key with
-        | (Overview | Logs), Event.Char "q" ->
+        | (Overview | Charts | Logs), Event.Char "q" ->
           Some { model with confirming_quit = true }
-        | (Overview | Logs), Event.Right ->
+        | (Overview | Charts | Logs), Event.Right ->
           Some { model with tab = shifted_tab model.tab ~by:Int.one }
-        | (Overview | Logs), Event.Left ->
+        | (Overview | Charts | Logs), Event.Left ->
           Some { model with tab = shifted_tab model.tab ~by:(Int.neg Int.one) }
         | _ -> Some (press_key model key ~screen))
     | Event.Paste _ ->
