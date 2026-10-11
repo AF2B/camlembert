@@ -16,6 +16,7 @@ let backend () =
   { Backend.size = screen_area
   ; draw = (fun changes -> send (Ansi.encode_changes changes))
   ; clear = (fun () -> send Ansi.clear_screen)
+  ; set_cursor = (fun position -> send (Ansi.encode_cursor position))
   ; flush
   }
 ;;

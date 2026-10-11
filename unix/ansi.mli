@@ -28,6 +28,12 @@ val reset_style : string
     @return The sequence that moves the cursor. *)
 val move_cursor : column:int -> row:int -> string
 
+(** Shows the text cursor at a position, or hides it.
+
+    @param position The cell the cursor goes to, or [None] to hide the cursor.
+    @return The sequence that does it. *)
+val encode_cursor : Camlembert.Position.t option -> string
+
 (** Selects colors and text effects for the text that follows.
 
     @param style The style to select.

@@ -1,6 +1,7 @@
 type t =
   { mutable screen : Buffer.t
   ; mutable drawn_cells : int
+  ; mutable cursor : Position.t option
   }
 
 let origin = 0
@@ -10,7 +11,10 @@ let blank_screen ~width ~height =
 ;;
 
 let create ~width ~height =
-  { screen = blank_screen ~width ~height; drawn_cells = Int.zero }
+  { screen = blank_screen ~width ~height
+  ; drawn_cells = Int.zero
+  ; cursor = None
+  }
 ;;
 
 let backend test_backend =
@@ -21,6 +25,7 @@ let backend test_backend =
         test_backend.drawn_cells
         <- test_backend.drawn_cells + List.length changes)
   ; clear = (fun () -> Buffer.reset test_backend.screen)
+  ; set_cursor = (fun position -> test_backend.cursor <- position)
   ; flush = ignore
   }
 ;;
@@ -28,6 +33,7 @@ let backend test_backend =
 let screen test_backend = test_backend.screen
 let to_lines test_backend = Buffer.to_lines test_backend.screen
 let drawn_cells test_backend = test_backend.drawn_cells
+let cursor test_backend = test_backend.cursor
 
 let resize test_backend ~width ~height =
   test_backend.screen <- blank_screen ~width ~height
