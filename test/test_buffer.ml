@@ -5,6 +5,7 @@ module Rect = Camlembert.Rect
 module Style = Camlembert.Style
 
 let origin = 0
+let oversize_factor = 2
 let screen_width = 6
 let screen_height = 2
 let second_row = 1
@@ -27,8 +28,8 @@ let oversized_region =
   Rect.make
     ~column:origin
     ~row:origin
-    ~width:(2 * screen_width)
-    ~height:(2 * screen_height)
+    ~width:(oversize_factor * screen_width)
+    ~height:(oversize_factor * screen_height)
 ;;
 
 let blue_background = Style.make ~background:Color.Blue ()
