@@ -50,3 +50,12 @@ let same_cells_outside hole first second =
       if not (Cell.equal first_cell second_cell) then same := false));
   !same
 ;;
+
+(** Tells whether drawing a widget in [region], on a buffer holding the generated
+    edits, leaves every cell outside [region] untouched. *)
+let leaves_the_outside_untouched widget ~region ~edits =
+  let untouched = build_buffer edits in
+  let drawn = build_buffer edits in
+  widget region drawn;
+  same_cells_outside region untouched drawn
+;;

@@ -263,6 +263,7 @@ let print_block_parameters (borders, border_type, title_text) =
     (QCheck2.Print.(option string) title_text)
 ;;
 
+let ratio = QCheck2.Gen.float_range 0.0 1.0
 let print_rect = Format.asprintf "%a" Rect.pp
 let print_margins = QCheck2.Print.(quad int int int int)
 let print_style = Format.asprintf "%a" Style.pp
