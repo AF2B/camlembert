@@ -22,5 +22,6 @@
   test_table
   test_scrollbar
   test_clear
-  test_sparkline)
+  test_sparkline
+  test_widget)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))

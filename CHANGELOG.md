@@ -21,6 +21,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - `Terminal`, `Frame` and `Widget`: draw a frame by rendering widgets into it;
   only the cells that changed since the previous frame reach the backend, and
   a resized screen is redrawn from scratch.
+- `Widget.split` draws several widgets in one region, each in the share its
+  constraint asks for, and `Stateful_widget.with_state` turns a stateful
+  widget into a plain one, so both can be composed.
 - `Backend`: the record of functions that connects the library to a terminal,
   and `Test_backend`, an in-memory terminal to test widgets without a real
   one.
@@ -74,3 +77,5 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   `Block` and `Paragraph`.
 - `examples/counter.ml`: an interactive counter that reacts to keys and
   resizes.
+- `examples/dashboard.ml`: a three-tab dashboard with gauges, a chart, a table
+  and a scrolling log, built by composing widgets with `Widget.split`.
