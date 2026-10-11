@@ -285,30 +285,6 @@ let test_apply_rejects_changes_outside_the_buffer () =
          [ change ~column:screen_width ~row:origin "x" ])
 ;;
 
-let build_buffer edits =
-  let buffer = Buffer.create Generators.screen in
-  List.iter
-    (fun { Generators.column; row; symbol; style } ->
-       Buffer.set_string
-         buffer
-         ~column
-         ~row
-         ~max_width:Generators.screen_width
-         ~style
-         symbol)
-    edits;
-  buffer
-;;
-
-let same_cells first second =
-  let same = ref true in
-  Rect.iter_positions Generators.screen (fun ~column ~row ->
-    let first_cell = Buffer.get first ~column ~row in
-    let second_cell = Buffer.get second ~column ~row in
-    if not (Cell.equal first_cell second_cell) then same := false);
-  !same
-;;
-
 let rec strictly_increasing = function
   | first :: (second :: _ as rest) ->
     compare first second < 0 && strictly_increasing rest
@@ -321,14 +297,11 @@ let property_applying_the_diff_gives_the_next_frame =
     ~print:QCheck2.Print.(pair Generators.print_edits Generators.print_edits)
     QCheck2.Gen.(pair Generators.edits Generators.edits)
     (fun (previous_edits, next_edits) ->
-       let screen_now = build_buffer previous_edits in
-       let changes =
-         Buffer.diff
-           ~previous:(build_buffer previous_edits)
-           ~next:(build_buffer next_edits)
-       in
-       Buffer.apply screen_now changes;
-       same_cells screen_now (build_buffer next_edits))
+       let previous = Support.build_buffer previous_edits in
+       let next = Support.build_buffer next_edits in
+       let screen_now = Support.build_buffer previous_edits in
+       Buffer.apply screen_now (Buffer.diff ~previous ~next);
+       Support.same_cells screen_now next)
 ;;
 
 let property_identical_frames_have_no_diff =
@@ -337,8 +310,9 @@ let property_identical_frames_have_no_diff =
     ~print:Generators.print_edits
     Generators.edits
     (fun edits ->
-       Buffer.diff ~previous:(build_buffer edits) ~next:(build_buffer edits)
-       = [])
+       let previous = Support.build_buffer edits in
+       let next = Support.build_buffer edits in
+       Buffer.diff ~previous ~next = [])
 ;;
 
 let property_changes_come_row_by_row =
@@ -347,9 +321,9 @@ let property_changes_come_row_by_row =
     ~print:QCheck2.Print.(pair Generators.print_edits Generators.print_edits)
     QCheck2.Gen.(pair Generators.edits Generators.edits)
     (fun (previous_edits, next_edits) ->
-       Buffer.diff
-         ~previous:(build_buffer previous_edits)
-         ~next:(build_buffer next_edits)
+       let previous = Support.build_buffer previous_edits in
+       let next = Support.build_buffer next_edits in
+       Buffer.diff ~previous ~next
        |> List.map (fun (change : Buffer.change) ->
          change.Buffer.row, change.Buffer.column)
        |> strictly_increasing)
