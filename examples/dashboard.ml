@@ -361,11 +361,13 @@ let overview model : Widget.t =
     ]
 ;;
 
+let axis_start = 0.0
+let halving_divisor = 2.0
 let history_seconds = Float.of_int history_size *. tick_seconds
 
 let history_labels =
   [ Printf.sprintf "-%.0f s" history_seconds
-  ; Printf.sprintf "-%.1f s" (history_seconds /. 2.0)
+  ; Printf.sprintf "-%.1f s" (history_seconds /. halving_divisor)
   ; "now"
   ]
 ;;
@@ -394,13 +396,13 @@ let history_chart model : Widget.t =
          (Chart.axis
             ~title:"time"
             ~labels:history_labels
-            ~bounds:(0.0, Float.of_int (pred history_size))
+            ~bounds:(axis_start, Float.of_int (pred history_size))
             ())
        ~y_axis:
          (Chart.axis
             ~title:"%"
             ~labels:percent_labels
-            ~bounds:(0.0, percent_scale)
+            ~bounds:(axis_start, percent_scale)
             ())
        [ series ~name:"CPU" ~color:Color.Green model.cpu_history
        ; series ~name:"Memory" ~color:Color.Yellow memory_history
