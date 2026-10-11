@@ -60,6 +60,47 @@ let style =
     Style.make ?foreground ?background ~modifiers ())
 ;;
 
+let max_text_length = 12
+let first_printable_ascii = ' '
+let last_printable_ascii = '~'
+let latin_letter = Uchar.of_char 'a'
+let line_feed = Uchar.of_char '\n'
+let combining_acute = Uchar.of_int 0x0301
+let zero_width_joiner = Uchar.of_int 0x200D
+let cjk_ideograph = Uchar.of_int 0x6F22
+let man_emoji = Uchar.of_int 0x1F468
+let regional_indicator = Uchar.of_int 0x1F1E7
+
+let interesting_scalars =
+  [ latin_letter
+  ; line_feed
+  ; combining_acute
+  ; zero_width_joiner
+  ; cjk_ideograph
+  ; man_emoji
+  ; regional_indicator
+  ]
+;;
+
+let printable_ascii_text =
+  QCheck2.Gen.(
+    string_size
+      ~gen:(char_range first_printable_ascii last_printable_ascii)
+      (int_range Int.zero max_text_length))
+;;
+
+let mixed_text =
+  QCheck2.Gen.(
+    let+ scalars =
+      list_size
+        (int_range Int.zero max_text_length)
+        (oneof_list interesting_scalars)
+    in
+    let buffer = Stdlib.Buffer.create max_text_length in
+    List.iter (Stdlib.Buffer.add_utf_8_uchar buffer) scalars;
+    Stdlib.Buffer.contents buffer)
+;;
+
 let print_rect = Format.asprintf "%a" Rect.pp
 let print_margins = QCheck2.Print.(quad int int int int)
 let print_style = Format.asprintf "%a" Style.pp
