@@ -29,6 +29,19 @@ val buffer : t -> Buffer.t
     @param area The region the widget may use. *)
 val render_widget : t -> Widget.t -> area:Rect.t -> unit
 
+(** Draws a widget that keeps a state, in a region of the frame.
+
+    @param frame The frame to draw into.
+    @param widget The widget to draw.
+    @param area The region the widget may use.
+    @param state The state the widget reads and updates while it draws. *)
+val render_stateful_widget
+  :  t
+  -> 'state Stateful_widget.t
+  -> area:Rect.t
+  -> 'state
+  -> unit
+
 (** Asks for the text cursor to be shown at a position once the frame is drawn.
 
     The cursor is hidden unless every frame asks for it.
