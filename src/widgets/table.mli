@@ -44,3 +44,16 @@ val make
     @return A widget that draws the table in the region it receives, updating
       the selection state it is given. *)
 val widget : t -> Selection.t Stateful_widget.t
+
+(** Finds the row under a cell, for reacting to a click.
+
+    The scrolling of the selection state is taken into account, as drawn. The
+    header is not a row.
+
+    @param table The table that is drawn.
+    @param selection The state the table is drawn with.
+    @param area The region the table is drawn in.
+    @param position The cell to look at.
+    @return The position of the row, counted from zero, or [None] when the
+      cell is not over a row. *)
+val index_at : t -> Selection.t -> area:Rect.t -> Position.t -> int option

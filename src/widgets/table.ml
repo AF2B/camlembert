@@ -129,6 +129,34 @@ let draw_body table buffer ~inner ~body_row ~symbol_width selection =
   |> List.iter draw_row
 ;;
 
+let inner_area table area =
+  match table.block with
+  | None -> area
+  | Some block -> Block.inner block area
+;;
+
+let reserved_rows table =
+  if Option.is_some table.header then header_rows else Int.zero
+;;
+
+let index_at table selection ~area { Position.column; row } =
+  let inner = inner_area table area in
+  let body =
+    Rect.shrink
+      inner
+      ~top:(Int.min inner.Rect.height (reserved_rows table))
+      ~bottom:Int.zero
+      ~left:Int.zero
+      ~right:Int.zero
+  in
+  let item_count = List.length table.rows in
+  Selection.reveal selection ~item_count ~visible_rows:body.Rect.height;
+  let index = Selection.offset selection + (row - body.Rect.row) in
+  if Rect.contains body ~column ~row && index < item_count
+  then Some index
+  else None
+;;
+
 let widget table area buffer selection =
   let inner =
     match table.block with
@@ -141,9 +169,7 @@ let widget table area buffer selection =
   if not (Rect.is_empty inner)
   then (
     let { Rect.column; row; width; height } = inner in
-    let reserved_rows =
-      if Option.is_some table.header then header_rows else Int.zero
-    in
+    let reserved_rows = reserved_rows table in
     Selection.reveal
       selection
       ~item_count:(List.length table.rows)

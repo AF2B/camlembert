@@ -32,3 +32,14 @@ val make
     @param tabs The tabs to draw.
     @return A widget that draws the tabs in the region it receives. *)
 val widget : t -> Widget.t
+
+(** Finds the title under a cell, for reacting to a click.
+
+    A title includes the space on each side of it. A divider belongs to no
+    title.
+
+    @param tabs The tabs that are drawn.
+    @param area The region the tabs are drawn in.
+    @param position The cell to look at.
+    @return The position of the title, counted from zero, or [None]. *)
+val index_at : t -> area:Rect.t -> Position.t -> int option

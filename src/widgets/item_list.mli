@@ -30,3 +30,15 @@ val make
     @return A widget that draws the list in the region it receives, updating
       the selection state it is given. *)
 val widget : t -> Selection.t Stateful_widget.t
+
+(** Finds the item under a cell, for reacting to a click.
+
+    The scrolling of the selection state is taken into account, as drawn.
+
+    @param list The list that is drawn.
+    @param selection The state the list is drawn with.
+    @param area The region the list is drawn in.
+    @param position The cell to look at.
+    @return The position of the item, counted from zero, or [None] when the
+      cell is not over an item. *)
+val index_at : t -> Selection.t -> area:Rect.t -> Position.t -> int option
