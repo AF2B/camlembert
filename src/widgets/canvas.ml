@@ -223,6 +223,18 @@ let full_turn = 2.0 *. Float.pi
 let samples_per_dot = 2.0
 let fewest_samples = 8
 
+(* A circle larger than any terminal is drawn with gaps rather than slowly. *)
+let most_samples = 100_000
+
+let overlaps_bounds canvas ~x ~y ~radius =
+  let x_low, x_high = canvas.x_bounds in
+  let y_low, y_high = canvas.y_bounds in
+  x +. radius >= x_low
+  && x -. radius <= x_high
+  && y +. radius >= y_low
+  && y -. radius <= y_high
+;;
+
 (* Walks around the circle with enough steps that no dot is skipped. *)
 let paint_circle canvas grid style ~x ~y ~radius =
   let x_low, x_high = canvas.x_bounds in
@@ -232,16 +244,23 @@ let paint_circle canvas grid style ~x ~y ~radius =
       (radius /. (x_high -. x_low) *. Float.of_int grid.dots_wide)
       (radius /. (y_high -. y_low) *. Float.of_int grid.dots_tall)
   in
-  let samples =
-    Int.max
-      fewest_samples
-      (Float.to_int
-         (Float.ceil (full_turn *. radius_in_dots *. samples_per_dot)))
-  in
-  List.init samples (fun sample ->
-    let angle = full_turn *. Float.of_int sample /. Float.of_int samples in
-    x +. (radius *. cos angle), y +. (radius *. sin angle))
-  |> List.iter (paint_point canvas grid style)
+  if
+    has_dots grid
+    && Float.is_finite radius_in_dots
+    && overlaps_bounds canvas ~x ~y ~radius
+  then (
+    let samples =
+      Int.min
+        most_samples
+        (Int.max
+           fewest_samples
+           (Float.to_int
+              (Float.ceil (full_turn *. radius_in_dots *. samples_per_dot))))
+    in
+    List.init samples (fun sample ->
+      let angle = full_turn *. Float.of_int sample /. Float.of_int samples in
+      x +. (radius *. cos angle), y +. (radius *. sin angle))
+    |> List.iter (paint_point canvas grid style))
 ;;
 
 let paint_shape canvas grid = function
