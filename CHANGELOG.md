@@ -124,3 +124,6 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   dialog, built by composing widgets with `Widget.split`. It works with the
   keyboard and with the mouse: click a tab or a row, turn the wheel, paste
   into the filter.
+- `examples/inline.ml`: an installer that shows its progress in four rows
+  below the prompt, prints each finished package above them with
+  `Terminal.insert_before` and leaves the last frame in the terminal.
