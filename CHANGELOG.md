@@ -7,6 +7,12 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 
 ## Unreleased
 
+### Changed
+
+- The copyright notice of Ratatui moved from `LICENSE` to a new `NOTICE` file,
+  so that GitHub recognizes the license of the project as MIT. Both notices are
+  still distributed with the code.
+
 ## v1 - 2026-10-11
 
 First release. Camlembert brings the model of Ratatui to OCaml: widgets draw
