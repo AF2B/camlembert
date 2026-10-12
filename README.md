@@ -390,5 +390,5 @@ converts them to PNG with `rsvg-convert`. It needs `tmux`, `python3`,
 
 ## License
 
-MIT. Camlembert derives from Ratatui, which is also MIT licensed; both
-copyright notices are kept in [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). Camlembert derives from Ratatui, which is also
+MIT licensed; its copyright notice is kept in [NOTICE](NOTICE).
