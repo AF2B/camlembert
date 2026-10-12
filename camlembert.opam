@@ -6,8 +6,9 @@ description:
 maintainer: ["André Borba <andre.borbaaf2b@gmail.com>"]
 authors: ["André Borba <andre.borbaaf2b@gmail.com>"]
 license: "MIT"
-homepage: "https://gitlab.com/andre.borbaaf2b/camlembert"
-bug-reports: "https://gitlab.com/andre.borbaaf2b/camlembert/-/issues"
+tags: ["tui" "terminal" "ui" "ratatui"]
+homepage: "https://github.com/AF2B/camlembert"
+bug-reports: "https://github.com/AF2B/camlembert/issues"
 depends: [
   "dune" {>= "3.0"}
   "ocaml" {>= "5.1"}
@@ -32,4 +33,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://gitlab.com/andre.borbaaf2b/camlembert.git"
+dev-repo: "git+https://github.com/AF2B/camlembert.git"
