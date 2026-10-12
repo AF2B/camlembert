@@ -18,6 +18,10 @@ let half_typed_text = "abc"
 let oversized_height = 100
 let two_lines = 2
 let four_lines = 4
+let more_lines_than_the_screen = 12
+let first_log = "log A"
+let second_log = "log B"
+let inserted_row_after_one_log = 3
 let seven_lines = 7
 let scrolled_rows = 2
 let seven_lines_viewport_top = 5
@@ -361,6 +365,194 @@ let test_finishing_a_full_screen_does_nothing () =
     (Test_backend.history test_backend)
 ;;
 
+(* Prints the lines above the viewport, one per row. *)
+let insert terminal lines =
+  Terminal.insert_before terminal ~height:(List.length lines) (fun frame ->
+    List.iteri
+      (fun row line ->
+         Buffer.set_string
+           (Frame.buffer frame)
+           ~column:first_column
+           ~row
+           ~max_width:screen_width
+           ~style:Style.default
+           line)
+      lines)
+;;
+
+let blank_rows count = List.init count (Fun.const (padded ""))
+
+let test_inserted_lines_go_above_the_viewport_and_push_it_down () =
+  let test_backend = backend_after ~lines:two_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  draw_text terminal greeting;
+  insert terminal [ first_log ];
+  Alcotest.(check (list string))
+    "screen"
+    (List.map padded (printed_lines two_lines)
+     @ [ padded first_log; padded greeting ]
+     @ blank_rows (screen_height - inserted_row_after_one_log - Int.one))
+    (Test_backend.to_lines test_backend);
+  Alcotest.(check int)
+    "the viewport moved down"
+    inserted_row_after_one_log
+    (Terminal.area terminal).Rect.row;
+  Alcotest.(check (list string))
+    "nothing scrolled"
+    []
+    (Test_backend.history test_backend)
+;;
+
+let test_the_screen_scrolls_when_the_viewport_is_at_the_bottom () =
+  let test_backend = backend_after ~lines:seven_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  draw_text terminal greeting;
+  insert terminal [ first_log; second_log ];
+  let lines = printed_lines seven_lines in
+  Alcotest.(check (list string))
+    "history"
+    (List.map padded (List.filteri (fun index _ -> index < four_lines) lines))
+    (Test_backend.history test_backend);
+  Alcotest.(check (list string))
+    "screen"
+    (List.map padded (List.filteri (fun index _ -> index >= four_lines) lines)
+     @ [ padded first_log; padded second_log; padded greeting ]
+     @ blank_rows (viewport_height - Int.one))
+    (Test_backend.to_lines test_backend);
+  Alcotest.(check int)
+    "the viewport stayed at the bottom"
+    (screen_height - viewport_height)
+    (Terminal.area terminal).Rect.row
+;;
+
+let test_lines_inserted_one_after_the_other_keep_their_order () =
+  let test_backend = backend_after ~lines:two_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  draw_text terminal greeting;
+  insert terminal [ first_log ];
+  insert terminal [ second_log ];
+  Alcotest.(check (list string))
+    "above the viewport"
+    (List.map padded (printed_lines two_lines @ [ first_log; second_log ]))
+    (rows_of test_backend ~count:(two_lines + two_lines))
+;;
+
+let test_the_next_draw_sends_only_what_changed_since_the_insertion () =
+  let test_backend = backend_after ~lines:two_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  draw_text terminal greeting;
+  insert terminal [ first_log ];
+  let drawn_after_insertion = Test_backend.drawn_cells test_backend in
+  draw_text terminal greeting;
+  Alcotest.(check int)
+    "same frame, nothing sent"
+    drawn_after_insertion
+    (Test_backend.drawn_cells test_backend);
+  draw_text terminal changed_greeting;
+  Alcotest.(check int)
+    "one changed cell"
+    (drawn_after_insertion + one_changed_cell)
+    (Test_backend.drawn_cells test_backend)
+;;
+
+let test_the_cursor_follows_the_viewport_when_lines_are_inserted () =
+  let test_backend = backend_after ~lines:two_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  let requested =
+    { Position.column = cursor_column; row = two_lines + cursor_offset }
+  in
+  Terminal.draw terminal (fun frame -> Frame.set_cursor frame requested);
+  insert terminal [ first_log ];
+  Alcotest.(check (option position_testable))
+    "shown, one row lower"
+    (Some { requested with Position.row = requested.Position.row + Int.one })
+    (Test_backend.cursor test_backend);
+  let hidden_backend = backend_after ~lines:two_lines in
+  let hidden_terminal =
+    inline_terminal hidden_backend ~height:viewport_height
+  in
+  draw_text hidden_terminal greeting;
+  insert hidden_terminal [ first_log ];
+  check_cursor_position
+    "hidden, on the first row of the viewport"
+    { Position.column = first_column; row = inserted_row_after_one_log }
+    hidden_backend
+;;
+
+let test_more_lines_than_the_screen_can_show_all_reach_the_history () =
+  let test_backend = backend_after ~lines:two_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  draw_text terminal greeting;
+  let logs = List.init more_lines_than_the_screen (Printf.sprintf "log %d") in
+  insert terminal logs;
+  Alcotest.(check (list string))
+    "everything printed so far, in order"
+    (List.map padded (printed_lines two_lines @ logs))
+    (Test_backend.history test_backend
+     @ rows_of test_backend ~count:(Terminal.area terminal).Rect.row);
+  Alcotest.(check string)
+    "the frame is still there"
+    (padded greeting)
+    (List.nth
+       (Test_backend.to_lines test_backend)
+       (Terminal.area terminal).Rect.row)
+;;
+
+let test_inserting_nothing_changes_nothing () =
+  let test_backend = backend_after ~lines:two_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  draw_text terminal greeting;
+  let lines_before = Test_backend.to_lines test_backend in
+  let drawn_before = Test_backend.drawn_cells test_backend in
+  Terminal.insert_before terminal ~height:Int.zero (fun _ -> ());
+  Alcotest.(check (list string))
+    "same screen"
+    lines_before
+    (Test_backend.to_lines test_backend);
+  Alcotest.(check int)
+    "nothing sent"
+    drawn_before
+    (Test_backend.drawn_cells test_backend)
+;;
+
+let test_the_lines_are_composed_on_a_region_as_wide_as_the_viewport () =
+  let test_backend = backend_after ~lines:two_lines in
+  let terminal = inline_terminal test_backend ~height:viewport_height in
+  let seen = ref None in
+  Terminal.insert_before terminal ~height:two_lines (fun frame ->
+    seen := Some (Frame.area frame));
+  Alcotest.(check (option rect_testable))
+    "area"
+    (Some
+       (Rect.make
+          ~column:first_column
+          ~row:Int.zero
+          ~width:screen_width
+          ~height:two_lines))
+    !seen
+;;
+
+let test_only_an_inline_viewport_has_room_above_it () =
+  let full_screen =
+    Terminal.create
+      (Test_backend.backend
+         (Test_backend.create ~width:screen_width ~height:screen_height))
+  in
+  Alcotest.check_raises
+    "full screen"
+    (Invalid_argument
+       "Terminal.insert_before: only an inline viewport has room above it")
+    (fun () -> Terminal.insert_before full_screen ~height:Int.one (fun _ -> ()));
+  let inline =
+    inline_terminal (backend_after ~lines:two_lines) ~height:viewport_height
+  in
+  Alcotest.check_raises
+    "negative height"
+    (Invalid_argument "Terminal.insert_before: height cannot be negative")
+    (fun () ->
+       Terminal.insert_before inline ~height:(Int.neg Int.one) (fun _ -> ()))
+;;
+
 let min_screen_height = 3
 let max_screen_height = 10
 let max_line_count = 14
@@ -390,6 +582,41 @@ let property_what_was_printed_stays_above_the_viewport =
        && area.Rect.row >= Int.zero
        && Rect.bottom area <= height
        && above = List.map padded (printed_lines line_count))
+;;
+
+let max_inserted_count = 14
+
+let property_inserted_lines_join_what_was_printed_above_the_viewport =
+  QCheck2.Test.make
+    ~name:"inserted lines follow the printed ones and the frame survives"
+    ~print:QCheck2.Print.(quad int int int int)
+    QCheck2.Gen.(
+      quad
+        (int_range min_screen_height max_screen_height)
+        (int_range Int.zero max_line_count)
+        (int_range Int.one max_viewport_height)
+        (int_range Int.zero max_inserted_count))
+    (fun (height, line_count, requested_height, inserted_count) ->
+       let test_backend = Test_backend.create ~width:screen_width ~height in
+       List.iter
+         (Test_backend.print_line test_backend)
+         (printed_lines line_count);
+       let terminal = inline_terminal test_backend ~height:requested_height in
+       draw_text terminal greeting;
+       let inserted = List.init inserted_count (Printf.sprintf "log %d") in
+       if inserted <> [] then insert terminal inserted;
+       let area = Terminal.area terminal in
+       let above =
+         Test_backend.history test_backend
+         @ rows_of test_backend ~count:area.Rect.row
+       in
+       above = List.map padded (printed_lines line_count @ inserted)
+       && area.Rect.height = Int.min requested_height height
+       && Rect.bottom area <= height
+       && List.nth (Test_backend.to_lines test_backend) area.Rect.row
+          = padded greeting
+       && Test_backend.cursor_position test_backend
+          = { Position.column = first_column; row = area.Rect.row })
 ;;
 
 let property_a_resized_viewport_stays_on_the_screen =
@@ -492,10 +719,49 @@ let () =
             `Quick
             test_finishing_a_full_screen_does_nothing
         ] )
+    ; ( "insert before"
+      , [ Alcotest.test_case
+            "pushes the viewport down"
+            `Quick
+            test_inserted_lines_go_above_the_viewport_and_push_it_down
+        ; Alcotest.test_case
+            "scrolls at the bottom"
+            `Quick
+            test_the_screen_scrolls_when_the_viewport_is_at_the_bottom
+        ; Alcotest.test_case
+            "keeps the order"
+            `Quick
+            test_lines_inserted_one_after_the_other_keep_their_order
+        ; Alcotest.test_case
+            "next draw"
+            `Quick
+            test_the_next_draw_sends_only_what_changed_since_the_insertion
+        ; Alcotest.test_case
+            "cursor"
+            `Quick
+            test_the_cursor_follows_the_viewport_when_lines_are_inserted
+        ; Alcotest.test_case
+            "more than the screen"
+            `Quick
+            test_more_lines_than_the_screen_can_show_all_reach_the_history
+        ; Alcotest.test_case
+            "nothing"
+            `Quick
+            test_inserting_nothing_changes_nothing
+        ; Alcotest.test_case
+            "composing region"
+            `Quick
+            test_the_lines_are_composed_on_a_region_as_wide_as_the_viewport
+        ; Alcotest.test_case
+            "only inline"
+            `Quick
+            test_only_an_inline_viewport_has_room_above_it
+        ] )
     ; ( "properties"
       , List.map
           QCheck_alcotest.to_alcotest
           [ property_what_was_printed_stays_above_the_viewport
+          ; property_inserted_lines_join_what_was_printed_above_the_viewport
           ; property_a_resized_viewport_stays_on_the_screen
           ] )
     ]
