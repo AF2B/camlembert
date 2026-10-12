@@ -23,6 +23,19 @@ let change ?(style = Style.default) ~column ~row symbol : Buffer.change =
 ;;
 
 let reset = escape ^ "[0m"
+let fourth_row = 3
+let last_row_of_a_short_screen = 23
+let two_rows = 2
+let report_row = 12
+let report_column = 40
+let huge_number = "99999999999999999999999"
+
+let position_testable =
+  Alcotest.testable
+    (fun formatter { Camlembert.Position.column; row } ->
+       Format.fprintf formatter "(%d, %d)" column row)
+    ( = )
+;;
 
 let test_mode_switches () =
   Alcotest.(check string)
@@ -76,6 +89,90 @@ let test_cursor_is_moved_before_it_is_shown () =
     (Ansi.encode_cursor
        (Some { Camlembert.Position.column = late_column; row = second_row }));
   Alcotest.(check string) "hidden" (escape ^ "[?25l") (Ansi.encode_cursor None)
+;;
+
+let test_clear_from_moves_and_erases_to_the_end_of_the_screen () =
+  Alcotest.(check string)
+    "from a cell"
+    (escape ^ "[4;3H" ^ escape ^ "[0J")
+    (Ansi.clear_from ~column:late_column ~row:fourth_row)
+;;
+
+let test_scrolling_prints_line_feeds_on_the_last_row () =
+  Alcotest.(check string)
+    "two rows"
+    (escape ^ "[24;1H\n\n")
+    (Ansi.scroll_up ~rows:two_rows ~last_row:last_row_of_a_short_screen);
+  Alcotest.(check string)
+    "nothing to scroll"
+    ""
+    (Ansi.scroll_up ~rows:Int.zero ~last_row:last_row_of_a_short_screen);
+  Alcotest.(check string)
+    "negative"
+    ""
+    (Ansi.scroll_up
+       ~rows:(Int.neg two_rows)
+       ~last_row:last_row_of_a_short_screen)
+;;
+
+let test_the_cursor_position_request () =
+  Alcotest.(check string)
+    "device status report"
+    (escape ^ "[6n")
+    Ansi.request_cursor_position
+;;
+
+let report ~row ~column = Printf.sprintf "%s[%d;%dR" escape row column
+let reported_position ~column ~row = { Camlembert.Position.column; row }
+
+let test_the_cursor_report_counts_from_one () =
+  Alcotest.(check (option position_testable))
+    "report"
+    (Some
+       (reported_position ~column:(pred report_column) ~row:(pred report_row)))
+    (Ansi.find_cursor_report (report ~row:report_row ~column:report_column));
+  Alcotest.(check (option position_testable))
+    "top-left corner"
+    (Some (reported_position ~column:first_column ~row:first_row))
+    (Ansi.find_cursor_report (report ~row:Int.one ~column:Int.one))
+;;
+
+let test_the_cursor_report_is_found_among_other_input () =
+  let expected =
+    Some (reported_position ~column:(pred report_column) ~row:(pred report_row))
+  in
+  let report_text = report ~row:report_row ~column:report_column in
+  Alcotest.(check (option position_testable))
+    "typed before"
+    expected
+    (Ansi.find_cursor_report ("ls\r" ^ report_text));
+  Alcotest.(check (option position_testable))
+    "key sequence before"
+    expected
+    (Ansi.find_cursor_report (escape ^ "[A" ^ report_text));
+  Alcotest.(check (option position_testable))
+    "typed after"
+    expected
+    (Ansi.find_cursor_report (report_text ^ "x"))
+;;
+
+let test_input_without_a_complete_report_has_none () =
+  List.iter
+    (fun (description, input) ->
+       Alcotest.(check (option position_testable))
+         description
+         None
+         (Ansi.find_cursor_report input))
+    [ "empty", ""
+    ; "plain text", "hello"
+    ; "cut after the row", escape ^ "[12"
+    ; "cut after the separator", escape ^ "[12;"
+    ; "cut before the final byte", escape ^ "[12;40"
+    ; "another final byte", escape ^ "[12;40H"
+    ; "no row", escape ^ "[;40R"
+    ; "no column", escape ^ "[12;R"
+    ; "huge numbers", escape ^ "[" ^ huge_number ^ ";1R"
+    ]
 ;;
 
 let test_select_style () =
@@ -237,6 +334,29 @@ let () =
             `Quick
             test_cursor_is_moved_before_it_is_shown
         ; Alcotest.test_case "select style" `Quick test_select_style
+        ; Alcotest.test_case
+            "clear from"
+            `Quick
+            test_clear_from_moves_and_erases_to_the_end_of_the_screen
+        ; Alcotest.test_case
+            "scroll up"
+            `Quick
+            test_scrolling_prints_line_feeds_on_the_last_row
+        ] )
+    ; ( "cursor report"
+      , [ Alcotest.test_case "request" `Quick test_the_cursor_position_request
+        ; Alcotest.test_case
+            "counts from one"
+            `Quick
+            test_the_cursor_report_counts_from_one
+        ; Alcotest.test_case
+            "among other input"
+            `Quick
+            test_the_cursor_report_is_found_among_other_input
+        ; Alcotest.test_case
+            "incomplete"
+            `Quick
+            test_input_without_a_complete_report_has_none
         ] )
     ; ( "encode changes"
       , [ Alcotest.test_case "no changes" `Quick test_no_changes_send_nothing

@@ -22,3 +22,12 @@ val enter_raw_mode : unit -> saved_mode
 
     @param saved_mode The settings returned by {!enter_raw_mode}. *)
 val restore_mode : saved_mode -> unit
+
+(** Waits for bytes to arrive, for a limited time.
+
+    @param descriptor Where the bytes come from, usually standard input.
+    @param seconds Most seconds to wait; zero only looks at what is there.
+    @return The bytes that arrived, or [None] when time ran out, or when the
+      wait was interrupted.
+    @raise End_of_file if the descriptor was closed. *)
+val read_within : descriptor:Unix.file_descr -> seconds:float -> string option

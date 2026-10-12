@@ -25,9 +25,11 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - `Widget.split` draws several widgets in one region, each in the share its
   constraint asks for, and `Stateful_widget.with_state` turns a stateful
   widget into a plain one, so both can be composed.
-- `Backend`: the record of functions that connects the library to a terminal,
-  and `Test_backend`, an in-memory terminal to test widgets without a real
-  one.
+- `Backend`: the record of functions that connects the library to a terminal:
+  drawing cells, blanking the screen from a cell, scrolling it, moving the
+  cursor and telling where it is. `Test_backend` is an in-memory terminal that
+  does the same, scrolls and keeps the rows that leave the screen, to test
+  widgets without a real one.
 - Text cursor: `Frame.set_cursor` shows the cursor at a `Position` once the
   frame is drawn, and hides it again when a frame does not ask for it.
 - `Layout` and `Constraint`: split a region into rows or columns using fixed

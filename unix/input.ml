@@ -15,8 +15,6 @@ let escape_timeout = 0.05
 (* Seconds between two looks at the size of the terminal. *)
 let resize_poll_interval = 0.1
 let no_time = 0.0
-let read_chunk_size = 1024
-let end_of_input = 0
 
 let create ?(descriptor = Unix.stdin) ?(size = Tty.size) () =
   { descriptor
@@ -58,21 +56,6 @@ let notice_resize source =
     enqueue source [ Event.Resize { width; height } ])
 ;;
 
-let is_readable source ~seconds =
-  match Unix.select [ source.descriptor ] [] [] seconds with
-  | [], _, _ -> false
-  | _ :: _, _, _ -> true
-  | exception Unix.Unix_error (Unix.EINTR, _, _) -> false
-;;
-
-let read_available source =
-  let bytes = Bytes.create read_chunk_size in
-  match Unix.read source.descriptor bytes Int.zero read_chunk_size with
-  | count when count = end_of_input -> raise End_of_file
-  | count -> feed source (Bytes.sub_string bytes Int.zero count)
-  | exception Unix.Unix_error (Unix.EINTR, _, _) -> ()
-;;
-
 (* Waits at most [remaining] seconds for input, then takes care of whatever
    happened: new bytes, a lone escape byte that waited long enough, or a
    resize. *)
@@ -82,10 +65,10 @@ let step source ~remaining =
     if waits_for_escape then escape_timeout else resize_poll_interval
   in
   let seconds = Float.min remaining slice in
-  if is_readable source ~seconds
-  then read_available source
-  else if waits_for_escape && seconds >= escape_timeout
-  then settle_pending source;
+  (match Tty.read_within ~descriptor:source.descriptor ~seconds with
+   | Some bytes -> feed source bytes
+   | None ->
+     if waits_for_escape && seconds >= escape_timeout then settle_pending source);
   notice_resize source
 ;;
 

@@ -35,3 +35,17 @@ let enter_raw_mode () =
 ;;
 
 let restore_mode saved = Unix.tcsetattr Unix.stdin Unix.TCSAFLUSH saved
+let read_chunk_size = 1024
+let end_of_input = 0
+
+let read_within ~descriptor ~seconds =
+  match Unix.select [ descriptor ] [] [] seconds with
+  | [], _, _ -> None
+  | _ :: _, _, _ ->
+    let bytes = Bytes.create read_chunk_size in
+    (match Unix.read descriptor bytes Int.zero read_chunk_size with
+     | count when count = end_of_input -> raise End_of_file
+     | count -> Some (Bytes.sub_string bytes Int.zero count)
+     | exception Unix.Unix_error (Unix.EINTR, _, _) -> None)
+  | exception Unix.Unix_error (Unix.EINTR, _, _) -> None
+;;

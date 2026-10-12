@@ -1,10 +1,14 @@
 (** A fake terminal that keeps its screen in memory.
 
-    It lets widgets and whole frames be tested without a real terminal. *)
+    It lets widgets and whole frames be tested without a real terminal. It
+    behaves like a real one where it matters: drawing moves its cursor, a line
+    feed on the last row scrolls the screen, and the rows that leave through
+    the top are kept as history. *)
 
 type t
 
-(** Creates a fake terminal with a blank screen.
+(** Creates a fake terminal with a blank screen and the cursor, hidden, at the
+    top-left corner.
 
     @param width Number of columns of the screen.
     @param height Number of rows of the screen.
@@ -29,6 +33,12 @@ val screen : t -> Buffer.t
     @return One string per row. *)
 val to_lines : t -> string list
 
+(** The rows that scrolled off the top of the fake screen, as plain text.
+
+    @param test_backend The fake terminal to inspect.
+    @return One string per row, the oldest first. *)
+val history : t -> string list
+
 (** How many cells were sent to the fake terminal since it was created.
 
     @param test_backend The fake terminal to inspect.
@@ -40,6 +50,27 @@ val drawn_cells : t -> int
     @param test_backend The fake terminal to inspect.
     @return The position of the cursor, or [None] when it is hidden. *)
 val cursor : t -> Position.t option
+
+(** Where the cursor stands, whether it is shown or hidden.
+
+    @param test_backend The fake terminal to inspect.
+    @return The position of the cursor. *)
+val cursor_position : t -> Position.t
+
+(** Writes text at the cursor, like a program printing without a line feed.
+
+    The cursor ends after the text. Text that does not fit in the row is cut.
+
+    @param test_backend The fake terminal to write on.
+    @param text The text to write. *)
+val print : t -> string -> unit
+
+(** Writes text at the cursor and goes to the start of the next row, like a
+    program printing a line. On the last row, the screen scrolls.
+
+    @param test_backend The fake terminal to write on.
+    @param text The line to write. *)
+val print_line : t -> string -> unit
 
 (** Simulates the user resizing the terminal window; the screen goes blank.
 
