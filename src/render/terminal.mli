@@ -59,6 +59,24 @@ val draw : t -> (Frame.t -> unit) -> unit
     @param terminal The terminal to clear. *)
 val clear : t -> unit
 
+(** Prints lines above an inline viewport, where they stay as part of what the
+    program has shown.
+
+    The lines are composed like a frame, on a region as wide as the viewport
+    and [height] rows tall, whose area starts at row zero. The viewport moves
+    down to make room for them while there are free rows below it. When there
+    are none, the screen scrolls and its oldest rows go to the history of the
+    terminal. The last frame is shown again right away where the viewport ends
+    up, so nothing flickers and the next draw sends only what changed.
+
+    @param terminal The terminal to print on.
+    @param height How many rows the lines take; nothing happens for zero.
+    @param render_lines Draws the lines, usually by rendering widgets into the
+      frame it is given.
+    @raise Invalid_argument if the terminal does not have an inline viewport,
+      or if [height] is negative. *)
+val insert_before : t -> height:int -> (Frame.t -> unit) -> unit
+
 (** Leaves the terminal ready for whatever is printed next.
 
     For an inline viewport the last frame stays on the screen and the cursor

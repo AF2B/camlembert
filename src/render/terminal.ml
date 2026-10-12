@@ -9,7 +9,7 @@ type t =
   ; mutable current : Buffer.t
   ; mutable previous : Buffer.t
   ; mutable cursor_shown : bool
-  ; mutable cursor_row : int
+  ; mutable cursor_request : Position.t option
   }
 
 let minimum_inline_height = Int.one
@@ -61,14 +61,22 @@ let create ?(viewport = Fullscreen) backend =
   ; current = Buffer.create area
   ; previous = Buffer.create area
   ; cursor_shown = false
-  ; cursor_row = area.Rect.row
+  ; cursor_request = None
   }
 ;;
 
+(* A shown cursor is where the last frame asked; a hidden one waits on the first
+   row of the viewport. *)
+let cursor_row terminal =
+  match terminal.cursor_request with
+  | Some position -> position.Position.row
+  | None -> (area terminal).Rect.row
+;;
+
+(* Blanking from the first cell of the viewport leaves the cursor there. *)
 let clear terminal =
-  let area = area terminal in
-  terminal.backend.Backend.clear_from (top_left area);
-  terminal.cursor_row <- area.Rect.row;
+  terminal.backend.Backend.clear_from (top_left (area terminal));
+  terminal.cursor_request <- None;
   Buffer.reset terminal.previous
 ;;
 
@@ -85,7 +93,7 @@ let resized_area terminal screen =
         Int.zero
         (Int.min
            (pred previous_area.Rect.height)
-           (terminal.cursor_row - previous_area.Rect.row))
+           (cursor_row terminal - previous_area.Rect.row))
     in
     let cursor = terminal.backend.Backend.cursor_position () in
     inline_area
@@ -101,7 +109,7 @@ let resize terminal screen =
   terminal.screen <- screen;
   terminal.current <- Buffer.create area;
   terminal.previous <- Buffer.create area;
-  terminal.cursor_row <- area.Rect.row
+  terminal.cursor_request <- None
 ;;
 
 let autoresize terminal =
@@ -122,20 +130,17 @@ let send_changes terminal =
 let park_cursor terminal =
   match terminal.viewport with
   | Fullscreen -> ()
-  | Inline _ ->
-    let area = area terminal in
-    terminal.backend.Backend.move_cursor (top_left area);
-    terminal.cursor_row <- area.Rect.row
+  | Inline _ -> terminal.backend.Backend.move_cursor (top_left (area terminal))
 ;;
 
 (* Drawing moves the cursor, so a visible cursor is put back after every
    frame. A hidden one only needs to be hidden once. *)
-let update_cursor terminal frame =
-  match Frame.cursor frame with
-  | Some position as shown ->
-    terminal.backend.Backend.set_cursor shown;
-    terminal.cursor_shown <- true;
-    terminal.cursor_row <- position.Position.row
+let place_cursor terminal request =
+  terminal.cursor_request <- request;
+  match request with
+  | Some _ ->
+    terminal.backend.Backend.set_cursor request;
+    terminal.cursor_shown <- true
   | None ->
     if terminal.cursor_shown
     then (
@@ -157,7 +162,7 @@ let draw terminal render_frame =
   let frame = Frame.create terminal.current in
   render_frame frame;
   send_changes terminal;
-  update_cursor terminal frame;
+  place_cursor terminal (Frame.cursor frame);
   terminal.backend.Backend.flush ();
   swap_buffers terminal
 ;;
@@ -175,4 +180,103 @@ let finish terminal =
       ; row = Int.min below (pred screen_height)
       };
     backend.Backend.flush ()
+;;
+
+let move_rows (changes : Buffer.change list) ~by =
+  List.map
+    (fun (change : Buffer.change) -> { change with row = change.row + by })
+    changes
+;;
+
+(* The cells of rows [first] up to [first + count], moved to start at [at_row]. *)
+let rows_at (changes : Buffer.change list) ~first ~count ~at_row =
+  List.filter
+    (fun (change : Buffer.change) ->
+       change.row >= first && change.row < first + count)
+    changes
+  |> fun selected -> move_rows selected ~by:(at_row - first)
+;;
+
+(* Prints the cells in the rows the viewport starts on and scrolls the screen
+   just enough to put the viewport below them, as many times as the rows need.
+   Rows that scroll off the top are the history. Returns the viewport where it
+   ends up, with nothing drawn in it. *)
+let rec print_rows backend ~screen_height ~changes ~remaining ~printed viewport =
+  let chunk = Int.min remaining (screen_height - viewport.Rect.row) in
+  if remaining <= Int.zero || chunk <= Int.zero
+  then viewport
+  else (
+    backend.Backend.clear_from (top_left viewport);
+    backend.Backend.draw
+      (rows_at changes ~first:printed ~count:chunk ~at_row:viewport.Rect.row);
+    let scroll =
+      Int.max
+        Int.zero
+        (viewport.Rect.row + chunk + viewport.Rect.height - screen_height)
+    in
+    if scroll > Int.zero then backend.Backend.scroll_up scroll;
+    print_rows
+      backend
+      ~screen_height
+      ~changes
+      ~remaining:(remaining - chunk)
+      ~printed:(printed + chunk)
+      { viewport with Rect.row = viewport.Rect.row + chunk - scroll })
+;;
+
+(* Shows the last frame again where the viewport moved to. *)
+let repaint terminal ~from_area ~to_area =
+  let shift = to_area.Rect.row - from_area.Rect.row in
+  let changes =
+    Buffer.diff ~previous:(Buffer.create from_area) ~next:terminal.previous
+    |> move_rows ~by:shift
+  in
+  terminal.backend.Backend.draw changes;
+  let repainted = Buffer.create to_area in
+  Buffer.apply repainted changes;
+  terminal.previous <- repainted;
+  terminal.current <- Buffer.create to_area;
+  place_cursor
+    terminal
+    (Option.map
+       (fun (position : Position.t) ->
+          { position with row = position.row + shift })
+       terminal.cursor_request)
+;;
+
+let insert_before terminal ~height render_lines =
+  if height < Int.zero
+  then invalid_arg "Terminal.insert_before: height cannot be negative";
+  (match terminal.viewport with
+   | Inline _ -> ()
+   | Fullscreen ->
+     invalid_arg
+       "Terminal.insert_before: only an inline viewport has room above it");
+  if height > Int.zero
+  then (
+    autoresize terminal;
+    let from_area = area terminal in
+    let lines =
+      Buffer.create
+        (Rect.make
+           ~column:from_area.Rect.column
+           ~row:Int.zero
+           ~width:from_area.Rect.width
+           ~height)
+    in
+    render_lines (Frame.create lines);
+    let changes =
+      Buffer.diff ~previous:(Buffer.create (Buffer.area lines)) ~next:lines
+    in
+    let to_area =
+      print_rows
+        terminal.backend
+        ~screen_height:terminal.screen.Rect.height
+        ~changes
+        ~remaining:height
+        ~printed:Int.zero
+        from_area
+    in
+    repaint terminal ~from_area ~to_area;
+    terminal.backend.Backend.flush ())
 ;;
