@@ -89,6 +89,8 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   above untouched and scrolling the screen when there is not enough room. The
   viewport is placed again after a resize, a hidden cursor waits on its first
   row, and `Terminal.finish` leaves the cursor below the last frame.
+  `Terminal.insert_before` prints lines above the viewport, as a history that
+  scrolls up with the screen, and shows the last frame again right away.
 - `Wrap`: breaks long lines into rows that fit a width, between words or at
   any character, keeping styles and never cutting a wide character in half.
 - `Event` and `Input_parser`: keyboard events (characters, Enter, Tab,
