@@ -2,20 +2,26 @@ module Cell = Camlembert.Cell
 module Color = Camlembert.Color
 module Style = Camlembert.Style
 
-let escape = "\027"
+let escape_character = '\027'
+let escape = String.make Int.one escape_character
 let control_sequence_introducer = escape ^ "["
 let parameter_separator = ";"
 let private_mode_marker = "?"
+let line_feed = '\n'
 
 (* Final bytes: the character that tells which sequence it is. *)
 let cursor_position_final = "H"
 let erase_display_final = "J"
+let device_status_report_final = "n"
+let cursor_report_final = 'R'
 let select_graphic_rendition_final = "m"
 let set_mode_final = "h"
 let reset_mode_final = "l"
 
 (* Numbers used by the sequences above. *)
+let erase_from_cursor = 0
 let erase_entire_display = 2
+let cursor_report_request = 6
 let alternate_screen_mode = 1049
 let cursor_visibility_mode = 25
 let bracketed_paste_mode = 2004
@@ -99,6 +105,83 @@ let reset_style =
 
 let move_cursor ~column ~row =
   sequence ~parameters:[ succ row; succ column ] cursor_position_final
+;;
+
+let clear_from ~column ~row =
+  move_cursor ~column ~row
+  ^ sequence ~parameters:[ erase_from_cursor ] erase_display_final
+;;
+
+let scroll_up ~rows ~last_row =
+  if rows <= Int.zero
+  then ""
+  else move_cursor ~column:Int.zero ~row:last_row ^ String.make rows line_feed
+;;
+
+let request_cursor_position =
+  sequence ~parameters:[ cursor_report_request ] device_status_report_final
+;;
+
+let is_digit character = character >= '0' && character <= '9'
+
+let character_at text index =
+  if index < String.length text then Some text.[index] else None
+;;
+
+(* Reads the run of digits that starts at [start]: the number and the position
+   just after the run. *)
+let number_at text start =
+  let rec run_end index =
+    if Option.fold ~none:false ~some:is_digit (character_at text index)
+    then run_end (succ index)
+    else index
+  in
+  let stop = run_end start in
+  if stop = start
+  then None
+  else
+    int_of_string_opt (String.sub text start (stop - start))
+    |> Option.map (fun number -> number, stop)
+;;
+
+let has_text_at text ~start expected =
+  let stop = start + String.length expected in
+  stop <= String.length text
+  && String.equal (String.sub text start (String.length expected)) expected
+;;
+
+(* A report reads [ESC \[ row ; column R], counted from one. *)
+let report_at text ~start =
+  let row_start = start + String.length control_sequence_introducer in
+  if not (has_text_at text ~start control_sequence_introducer)
+  then None
+  else
+    Option.bind (number_at text row_start) (fun (row, after_row) ->
+      if not (has_text_at text ~start:after_row parameter_separator)
+      then None
+      else
+        Option.bind
+          (number_at text (after_row + String.length parameter_separator))
+          (fun (column, after_column) ->
+             if character_at text after_column = Some cursor_report_final
+             then
+               Some
+                 { Camlembert.Position.column = Int.max Int.zero (pred column)
+                 ; row = Int.max Int.zero (pred row)
+                 }
+             else None))
+;;
+
+let find_cursor_report text =
+  let rec search_from index =
+    match String.index_from_opt text index escape_character with
+    | None -> None
+    | Some start ->
+      (match report_at text ~start with
+       | Some _ as report -> report
+       | None -> search_from (succ start))
+  in
+  search_from Int.zero
 ;;
 
 (* The cursor is moved before it is shown, so it never flashes elsewhere. *)

@@ -1,4 +1,5 @@
 module Backend = Camlembert.Backend
+module Position = Camlembert.Position
 module Rect = Camlembert.Rect
 module Terminal = Camlembert.Terminal
 
@@ -12,10 +13,50 @@ let screen_area () =
 let send text = Out_channel.output_string Out_channel.stdout text
 let flush () = Out_channel.flush Out_channel.stdout
 
+(* Seconds the terminal is given to tell where its cursor is. *)
+let cursor_report_timeout = 1.0
+let no_time = 0.0
+
+(* Asks the terminal and reads the answer from the input, ignoring anything
+   else that arrives meanwhile. *)
+let cursor_position () =
+  send Ansi.request_cursor_position;
+  flush ();
+  let deadline = Unix.gettimeofday () +. cursor_report_timeout in
+  let rec wait_for_report received =
+    match Ansi.find_cursor_report received with
+    | Some position -> position
+    | None ->
+      let remaining = deadline -. Unix.gettimeofday () in
+      if remaining <= no_time
+      then
+        failwith
+          "Unix_backend.cursor_position: the terminal did not report the \
+           position of the cursor"
+      else
+        wait_for_report
+          (received
+           ^ Option.value
+               (Tty.read_within ~descriptor:Unix.stdin ~seconds:remaining)
+               ~default:"")
+  in
+  wait_for_report ""
+;;
+
+let move_cursor { Position.column; row } = send (Ansi.move_cursor ~column ~row)
+let clear_from { Position.column; row } = send (Ansi.clear_from ~column ~row)
+
+let scroll_up rows =
+  send (Ansi.scroll_up ~rows ~last_row:(pred (screen_area ()).Rect.height))
+;;
+
 let backend () =
   { Backend.size = screen_area
+  ; cursor_position
   ; draw = (fun changes -> send (Ansi.encode_changes changes))
-  ; clear = (fun () -> send Ansi.clear_screen)
+  ; clear_from
+  ; scroll_up
+  ; move_cursor
   ; set_cursor = (fun position -> send (Ansi.encode_cursor position))
   ; flush
   }

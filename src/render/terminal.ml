@@ -17,12 +17,12 @@ let create backend =
 let area terminal = Buffer.area terminal.current
 
 let clear terminal =
-  terminal.backend.Backend.clear ();
+  terminal.backend.Backend.clear_from Position.origin;
   Buffer.reset terminal.previous
 ;;
 
 let resize terminal new_area =
-  terminal.backend.Backend.clear ();
+  terminal.backend.Backend.clear_from Position.origin;
   terminal.current <- Buffer.create new_area;
   terminal.previous <- Buffer.create new_area
 ;;
