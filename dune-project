@@ -12,10 +12,10 @@
  (maintainers "André Borba <andre.borbaaf2b@gmail.com>")
  (authors "André Borba <andre.borbaaf2b@gmail.com>")
  (license MIT)
- (homepage "https://gitlab.com/andre.borbaaf2b/camlembert")
- (bug_reports "https://gitlab.com/andre.borbaaf2b/camlembert/-/issues")
  (source
-  (uri git+https://gitlab.com/andre.borbaaf2b/camlembert.git))
+  (github AF2B/camlembert))
+ (tags
+  (tui terminal ui ratatui))
  (depends
   (ocaml
    (>= 5.1))
