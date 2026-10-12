@@ -101,7 +101,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
   runs a function with the terminal in raw mode on the alternate screen,
   draws through ANSI escape sequences (moving the cursor and changing the
   style only where needed) and puts the terminal back when it returns, raises
-  or is interrupted with Ctrl-C.
+  or is interrupted with Ctrl-C. With `~viewport:(Inline rows)` it stays on
+  the normal screen instead, asks the terminal where the cursor is, and
+  leaves the last frame with the cursor below it when it ends.
 - Mouse: presses, releases, drags and wheel turns arrive as `Event.Mouse`, with
   the cell they happened over and the modifier keys held, when
   `Unix_backend.with_terminal` is given `~features:[ Mouse ]`.
@@ -119,5 +121,9 @@ sequentially as `v1`, `v2`, `v3`, and so on.
 - `examples/dashboard.ml`: a four-tab dashboard with gauges, a line gauge, a
   sparkline, a line chart of two series, a radar drawn on a canvas, a filter
   to type in, a table with a footer, a padded scrolling log and a quit
-  dialog, built by composing widgets with `Widget.split`. It works with the keyboard and with the mouse: click a tab
-  or a row, turn the wheel, paste into the filter.
+  dialog, built by composing widgets with `Widget.split`. It works with the
+  keyboard and with the mouse: click a tab or a row, turn the wheel, paste
+  into the filter.
+- `examples/inline.ml`: an installer that shows its progress in four rows
+  below the prompt, prints each finished package above them with
+  `Terminal.insert_before` and leaves the last frame in the terminal.
