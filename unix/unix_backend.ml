@@ -83,7 +83,25 @@ let disable_sequence = function
   | Bracketed_paste -> Ansi.disable_bracketed_paste
 ;;
 
-let with_terminal ?(features = []) run =
+(* A program that fills the screen gets the alternate screen, blank, and gives
+   it back at the end. An inline viewport keeps the normal screen, and what is
+   on it, as it is. *)
+let enter_screen = function
+  | Terminal.Fullscreen -> Ansi.enter_alternate_screen
+  | Terminal.Inline _ -> ""
+;;
+
+let blank_screen = function
+  | Terminal.Fullscreen -> Ansi.clear_screen
+  | Terminal.Inline _ -> ""
+;;
+
+let leave_screen = function
+  | Terminal.Fullscreen -> Ansi.leave_alternate_screen
+  | Terminal.Inline _ -> ""
+;;
+
+let with_terminal ?(features = []) ?(viewport = Terminal.Fullscreen) run =
   require_terminal ();
   let saved_mode = Tty.enter_raw_mode () in
   let enable_features = String.concat "" (List.map enable_sequence features) in
@@ -95,7 +113,7 @@ let with_terminal ?(features = []) run =
       (disable_features
        ^ Ansi.reset_style
        ^ Ansi.show_cursor
-       ^ Ansi.leave_alternate_screen);
+       ^ leave_screen viewport);
     flush ();
     Tty.restore_mode saved_mode;
     Sys.catch_break false
@@ -103,9 +121,12 @@ let with_terminal ?(features = []) run =
   Sys.catch_break true;
   Fun.protect ~finally:leave_terminal (fun () ->
     send
-      (Ansi.enter_alternate_screen
+      (enter_screen viewport
        ^ enable_features
        ^ Ansi.hide_cursor
-       ^ Ansi.clear_screen);
-    run (Terminal.create (backend ())))
+       ^ blank_screen viewport);
+    let terminal = Terminal.create ~viewport (backend ()) in
+    Fun.protect
+      ~finally:(fun () -> Terminal.finish terminal)
+      (fun () -> run terminal))
 ;;
