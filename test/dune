@@ -32,5 +32,6 @@
   test_marker
   test_canvas
   test_chart
-  test_line_gauge)
+  test_line_gauge
+  test_test_backend)
  (libraries camlembert camlembert.unix alcotest qcheck-core qcheck-alcotest))
