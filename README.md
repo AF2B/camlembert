@@ -14,7 +14,8 @@ Early development, not yet published to opam.
 Available today: layout by constraints, styled text with wrapping and
 scrolling, keyboard, mouse, paste and resize events, a text cursor, correct
 column widths for CJK, emoji and combining marks, a Unix backend and an
-in-memory backend for tests, and these widgets: `Block`, `Paragraph`,
+in-memory backend for tests, drawing on the whole screen or only in a few rows
+below the prompt (an inline viewport), and these widgets: `Block`, `Paragraph`,
 `Gauge`, `Line_gauge`, `Tabs`, `Item_list`, `Table`, `Scrollbar`, `Sparkline`,
 `Bar_chart`, `Canvas`, `Chart`, `Text_field` and `Clear`.
 
@@ -44,10 +45,11 @@ let () =
     ignore (In_channel.input_char In_channel.stdin))
 ```
 
-Three larger examples live in [`examples/`](examples):
+Four larger examples live in [`examples/`](examples):
 [`hello.ml`](examples/hello.ml) splits the screen into a menu and a greeting,
-[`counter.ml`](examples/counter.ml) reacts to keys and resizes, and
-[`dashboard.ml`](examples/dashboard.ml) has four tabs with gauges, a line
+[`counter.ml`](examples/counter.ml) reacts to keys and resizes,
+[`inline.ml`](examples/inline.ml) shows an installer's progress in a few rows
+below the prompt, and [`dashboard.ml`](examples/dashboard.ml) has four tabs with gauges, a line
 chart, a radar drawn on a canvas, a filter you can type in, a table, a
 scrolling log and a quit dialog; it works with the keyboard and with the
 mouse. Run one with
@@ -64,6 +66,27 @@ mouse. Run one with
 │                    │║                                              ║
 │                    │║                                              ║
 ╰────────────────────╯╚══════════════════════════════════════════════╝
+```
+
+This is what `inline.exe` leaves in the terminal when it ends: the finished
+packages were printed above the progress bars while it ran, nothing was
+cleared, and the prompt comes back right below the last frame:
+
+```
+$ dune exec examples/inline.exe
+✔ ocaml-base-compiler 5.5.1
+✔ dune 3.24.2
+✔ uucp 18.0.0
+✔ uuseg 18.0.0
+✔ alcotest 1.9.1
+✔ qcheck-core 0.91
+✔ ocamlformat 0.29.0
+✔ odoc 3.2.1
+Installing 8 packages
+Everything is installed
+Total                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+$
 ```
 
 The Overview tab of the dashboard, with its gauges, a line gauge and bars that
@@ -171,6 +194,13 @@ new frame after each one. Mouse and paste events are asked for with
 `Tabs.index_at`, `Item_list.index_at` and `Table.index_at` tell what is under a
 click. Text is typed into a `Line_edit`, drawn by a `Text_field`.
 
+A terminal takes the whole screen by default. With
+`Unix_backend.with_terminal ~viewport:(Inline rows)` it stays on the normal
+screen instead and draws in some rows below the cursor, leaving what is above
+untouched, like a progress bar in the middle of a shell session.
+`Terminal.insert_before` prints lines above those rows, where they stay as
+history, and the last frame is kept when the program ends.
+
 Because the backend is the only part that talks to the outside world, widgets
 can be tested without a terminal:
 
@@ -188,7 +218,7 @@ Test_backend.to_lines test_backend (* one string per row of the screen *)
 | `Rect`, `Position`, `Color`, `Style`, `Cell`, `Buffer` | The cell grid widgets draw into, and the diff between two frames |
 | `Grapheme` | Splitting text into user-perceived characters and measuring terminal columns |
 | `Layout`, `Constraint` | Splitting a region with lengths, percentages, ratios, minimums, maximums and fill |
-| `Widget`, `Stateful_widget`, `Frame`, `Terminal`, `Backend` | Drawing frames, composing widgets and sending the diff to a backend |
+| `Widget`, `Stateful_widget`, `Frame`, `Terminal`, `Backend` | Drawing frames on the whole screen or in some rows below the prompt, composing widgets and sending the diff to a backend |
 | `Test_backend` | An in-memory terminal to test widgets |
 | `Event`, `Input_parser` | Keyboard, mouse, paste and resize events, and the parser that turns terminal bytes into them |
 | `Alignment`, `Span`, `Line`, `Text`, `Wrap` | Styled text, and breaking long lines into rows |
